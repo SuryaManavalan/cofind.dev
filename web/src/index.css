@@ -3,12 +3,13 @@
 @import "tw-animate-css";
 
 /*
- * "Night Winter" theme (colormagic.app dark palettes), chosen for the ICP:
- * technical founders, Linear/Vercel-adjacent taste. The five palette anchors —
- * Big Stone #141C33 · San Juan #2F456F · Wedgewood #5374AC · Polo Blue #8BAFD0
- * · Black Squeeze #EFF5FA — drive every token; intermediates are color-mix
- * blends of the anchors so the whole app stays inside the palette.
- * Light/dark follow the OS via prefers-color-scheme.
+ * Themes (ADR-018). data-theme on <html> picks the palette; data-mode is the
+ * resolved light|dark (set by src/theme.ts + the boot script — never absent,
+ * so no media queries needed here). Default: "Night Winter" (colormagic.app),
+ * chosen for the ICP — anchors: Big Stone #141C33 · San Juan #2F456F ·
+ * Wedgewood #5374AC · Polo Blue #8BAFD0 · Black Squeeze #EFF5FA.
+ * These same tokens are injected into sandboxed html posts, so agent-authored
+ * artifacts styled with var(--token) match every viewer's theme.
  */
 
 :root {
@@ -34,28 +35,155 @@
   --brand: #5374ac;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #141c33;
-    --foreground: #eff5fa;
-    --card: color-mix(in srgb, #141c33 82%, #2f456f);
-    --card-foreground: #eff5fa;
-    --popover: color-mix(in srgb, #141c33 68%, #2f456f);
-    --popover-foreground: #eff5fa;
-    --primary: #eff5fa;
-    --primary-foreground: #141c33;
-    --secondary: color-mix(in srgb, #141c33 45%, #2f456f);
-    --secondary-foreground: #eff5fa;
-    --muted: color-mix(in srgb, #141c33 55%, #2f456f);
-    --muted-foreground: color-mix(in srgb, #8bafd0 72%, #5374ac);
-    --accent: color-mix(in srgb, #141c33 45%, #2f456f);
-    --accent-foreground: #eff5fa;
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: color-mix(in srgb, #5374ac 32%, transparent);
-    --input: color-mix(in srgb, #5374ac 42%, transparent);
-    --ring: #5374ac;
-    --brand: #8bafd0;
-  }
+:root[data-mode="dark"] {
+  --background: #141c33;
+  --foreground: #eff5fa;
+  --card: color-mix(in srgb, #141c33 82%, #2f456f);
+  --card-foreground: #eff5fa;
+  --popover: color-mix(in srgb, #141c33 68%, #2f456f);
+  --popover-foreground: #eff5fa;
+  --primary: #eff5fa;
+  --primary-foreground: #141c33;
+  --secondary: color-mix(in srgb, #141c33 45%, #2f456f);
+  --secondary-foreground: #eff5fa;
+  --muted: color-mix(in srgb, #141c33 55%, #2f456f);
+  --muted-foreground: color-mix(in srgb, #8bafd0 72%, #5374ac);
+  --accent: color-mix(in srgb, #141c33 45%, #2f456f);
+  --accent-foreground: #eff5fa;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: color-mix(in srgb, #5374ac 32%, transparent);
+  --input: color-mix(in srgb, #5374ac 42%, transparent);
+  --ring: #5374ac;
+  --brand: #8bafd0;
+}
+
+/* Zinc — the neutral + violet look */
+:root[data-theme="zinc"] {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: oklch(0.21 0.006 285.885);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.705 0.015 286.067);
+  --brand: oklch(0.541 0.281 293.009);
+}
+
+:root[data-theme="zinc"][data-mode="dark"] {
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.18 0.005 285.885);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.92 0.004 286.32);
+  --primary-foreground: oklch(0.21 0.006 285.885);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.552 0.016 285.938);
+  --brand: oklch(0.702 0.183 293.541);
+}
+
+/* Ember — warm charcoal + amber */
+:root[data-theme="ember"] {
+  --background: #faf6f0;
+  --foreground: #211812;
+  --card: #ffffff;
+  --card-foreground: #211812;
+  --popover: #ffffff;
+  --popover-foreground: #211812;
+  --primary: #211812;
+  --primary-foreground: #faf6f0;
+  --secondary: #f0e6d9;
+  --secondary-foreground: #211812;
+  --muted: #f0e6d9;
+  --muted-foreground: #8a6f57;
+  --accent: #f3e8da;
+  --accent-foreground: #211812;
+  --border: #e6d5c0;
+  --input: #e0cdb5;
+  --ring: #d97706;
+  --brand: #b45309;
+}
+
+:root[data-theme="ember"][data-mode="dark"] {
+  --background: #171310;
+  --foreground: #f5efe8;
+  --card: #1e1915;
+  --card-foreground: #f5efe8;
+  --popover: #262019;
+  --popover-foreground: #f5efe8;
+  --primary: #f5efe8;
+  --primary-foreground: #171310;
+  --secondary: #2b241d;
+  --secondary-foreground: #f5efe8;
+  --muted: #292219;
+  --muted-foreground: #b39a80;
+  --accent: #2b241d;
+  --accent-foreground: #f5efe8;
+  --border: rgba(217, 119, 6, 0.22);
+  --input: rgba(217, 119, 6, 0.3);
+  --ring: #d97706;
+  --brand: #fbbf24;
+}
+
+/* Forest — deep green + mint */
+:root[data-theme="forest"] {
+  --background: #f2f7f3;
+  --foreground: #14231a;
+  --card: #ffffff;
+  --card-foreground: #14231a;
+  --popover: #ffffff;
+  --popover-foreground: #14231a;
+  --primary: #14231a;
+  --primary-foreground: #f2f7f3;
+  --secondary: #e2eee5;
+  --secondary-foreground: #14231a;
+  --muted: #e2eee5;
+  --muted-foreground: #52705e;
+  --accent: #e6f1e9;
+  --accent-foreground: #14231a;
+  --border: #cfe2d4;
+  --input: #c2dbc9;
+  --ring: #059669;
+  --brand: #047857;
+}
+
+:root[data-theme="forest"][data-mode="dark"] {
+  --background: #0f1712;
+  --foreground: #ecf5ee;
+  --card: #141d17;
+  --card-foreground: #ecf5ee;
+  --popover: #1a251d;
+  --popover-foreground: #ecf5ee;
+  --primary: #ecf5ee;
+  --primary-foreground: #0f1712;
+  --secondary: #1d2a21;
+  --secondary-foreground: #ecf5ee;
+  --muted: #1b271f;
+  --muted-foreground: #8fae99;
+  --accent: #1d2a21;
+  --accent-foreground: #ecf5ee;
+  --border: rgba(52, 211, 153, 0.18);
+  --input: rgba(52, 211, 153, 0.26);
+  --ring: #10b981;
+  --brand: #34d399;
 }
 
 @theme inline {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, KeyRound, LogOut } from "lucide-react";
+import { Check, Copy, KeyRound, LogOut, Palette } from "lucide-react";
+import { MODES, THEMES, getMode, getTheme, setMode, setTheme, type Mode } from "../theme";
 import type { AccessToken, User } from "../types";
 import { api } from "../api";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,18 @@ export default function Settings({
   const [freshToken, setFreshToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [theme, setThemeState] = useState(getTheme());
+  const [mode, setModeState] = useState<Mode>(getMode());
+
+  function pickTheme(id: string) {
+    setTheme(id);
+    setThemeState(id);
+  }
+
+  function pickMode(m: Mode) {
+    setMode(m);
+    setModeState(m);
+  }
 
   useEffect(() => {
     if (open) api.listTokens().then((r) => setTokens(r.tokens));
@@ -115,6 +128,49 @@ export default function Settings({
               ))}
             </ul>
           )}
+        </div>
+
+        <Separator />
+
+        <div>
+          <div className="flex items-center gap-2">
+            <Palette className="size-4 text-brand" />
+            <h3 className="font-semibold">Appearance</h3>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {THEMES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => pickTheme(t.id)}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  theme === t.id ? "border-brand/50 bg-brand/5" : "hover:bg-accent"
+                }`}
+              >
+                <span className="relative flex size-5 shrink-0 overflow-hidden rounded-full border">
+                  <span className="w-1/2" style={{ background: t.swatch[0] }} />
+                  <span className="w-1/2" style={{ background: t.swatch[1] }} />
+                </span>
+                <span className="font-medium">{t.label}</span>
+                {theme === t.id && <Check className="ml-auto size-3.5 text-brand" />}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 grid grid-cols-3 rounded-lg bg-muted p-1">
+            {MODES.map((m) => (
+              <button
+                key={m}
+                onClick={() => pickMode(m)}
+                className={`rounded-md py-1 text-xs font-medium capitalize transition-colors ${
+                  mode === m ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Artifact posts styled with theme tokens follow whichever theme each member runs.
+          </p>
         </div>
 
         <Separator />

@@ -7,6 +7,18 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icon.svg" />
     <title>cofind</title>
+    <script>
+      // Pre-paint theme boot (no flash) — kept in sync with src/theme.ts.
+      (function () {
+        try {
+          var t = localStorage.getItem("cofind-theme") || "night-winter";
+          var m = localStorage.getItem("cofind-mode") || "system";
+          var r = m === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : m;
+          document.documentElement.dataset.theme = t;
+          document.documentElement.dataset.mode = r;
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

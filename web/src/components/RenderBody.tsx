@@ -129,10 +129,24 @@ const FULL_FRAME_MAX = 4000;
 // reach cofind's DOM, cookies, or tokens, and can't exfiltrate over the network.
 const FRAME_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:;";
 
+// Theme tokens flow into the hostile frame (ADR-018): post HTML styled with
+// var(--token) matches every viewer's theme, live. Values are the *declared*
+// custom-property strings (hex / color-mix of literals), valid inside the frame.
+const FRAME_TOKENS = [
+  "background", "foreground", "card", "card-foreground", "muted", "muted-foreground",
+  "accent", "accent-foreground", "primary", "primary-foreground", "border", "brand", "radius",
+];
+
+function frameThemeCss(): string {
+  const cs = getComputedStyle(document.documentElement);
+  const vars = FRAME_TOKENS.map((n) => `--${n}: ${cs.getPropertyValue(`--${n}`).trim()};`).join(" ");
+  const mode = document.documentElement.dataset.mode ?? "dark";
+  return `:root { color-scheme: ${mode}; ${vars} } body { color: var(--foreground); }`;
+}
+
 const FRAME_PRELUDE = `<meta http-equiv="Content-Security-Policy" content="${FRAME_CSP}">
 <style>
-  :root { color-scheme: light dark; }
-  body { margin: 8px; font-family: ui-sans-serif, system-ui, sans-serif; color: light-dark(#141c33, #eff5fa); background: transparent; }
+  body { margin: 8px; font-family: ui-sans-serif, system-ui, sans-serif; background: transparent; }
   * { scrollbar-width: thin; scrollbar-color: rgba(128,128,140,.4) transparent; }
   *::-webkit-scrollbar { width: 8px; height: 8px; }
   *::-webkit-scrollbar-track { background: transparent; }
@@ -161,7 +175,17 @@ function extractCard(body: string): string | null {
     const styles = Array.from(doc.querySelectorAll("style"))
       .map((s) => s.outerHTML)
       .join("");
-    return styles + card.outerHTML;
+    // Preserve the ancestor chain as empty shells so descendant selectors
+    // scoped to a wrapper (e.g. ".tk .kpis > div") still match the card.
+    let node: Element = card.cloneNode(true) as Element;
+    let parent = card.parentElement;
+    while (parent && parent.tagName !== "BODY" && parent.tagName !== "HTML") {
+      const shell = parent.cloneNode(false) as Element;
+      shell.appendChild(node);
+      node = shell;
+      parent = parent.parentElement;
+    }
+    return styles + node.outerHTML;
   } catch {
     return null;
   }
@@ -170,6 +194,13 @@ function extractCard(body: string): string | null {
 function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [contentHeight, setContentHeight] = useState(PREVIEW_FRAME_MAX);
+  const [themeCss, setThemeCss] = useState(frameThemeCss);
+
+  useEffect(() => {
+    const onTheme = () => setThemeCss(frameThemeCss());
+    window.addEventListener("cofind:theme", onTheme);
+    return () => window.removeEventListener("cofind:theme", onTheme);
+  }, []);
 
   const cardHtml = variant === "preview" ? extractCard(body) : null;
   const frameBody = cardHtml ?? body;
@@ -194,7 +225,7 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
         // Hostile by default (ADR-004): scripts allowed for the "little artifact"
         // case, but no same-origin, no top-navigation, no forms, no popups.
         sandbox="allow-scripts"
-        srcDoc={FRAME_PRELUDE + frameBody}
+        srcDoc={`${FRAME_PRELUDE}<style>${themeCss}</style>${frameBody}`}
         className="w-full rounded-lg border bg-muted/40 transition-[height]"
         style={{ height: Math.min(contentHeight, maxHeight) }}
         title="post content"
