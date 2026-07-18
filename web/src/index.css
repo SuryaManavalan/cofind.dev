@@ -221,6 +221,15 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Must match the color-scheme injected into artifact iframes: a mismatch
+     makes the browser revoke iframe transparency and paint an opaque canvas
+     (the "black slab" behind artifacts). Also themes native controls. */
+  :root[data-mode="light"] {
+    color-scheme: light;
+  }
+  :root[data-mode="dark"] {
+    color-scheme: dark;
+  }
   /* Thin, theme-aware scrollbars — the OS default reads as a bright slab in dark mode. */
   * {
     scrollbar-width: thin;
