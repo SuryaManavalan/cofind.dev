@@ -32,6 +32,7 @@ export interface PostSummary {
   render_mode: RenderMode;
   via: Via;
   created_at: number;
+  edited_at: number | null;
   reply_count: number;
   reactions: ReactionSummary[];
   seen_by_me: boolean;
@@ -89,6 +90,7 @@ interface PostRow {
   render_mode: RenderMode;
   via: Via;
   created_at: number;
+  edited_at: number | null;
   sort_key: number;
   reply_count: number;
 }
@@ -101,6 +103,7 @@ function toSummary(row: PostRow, viewerId: string): PostSummary {
     render_mode: row.render_mode,
     via: row.via,
     created_at: row.created_at,
+    edited_at: row.edited_at,
     reply_count: row.reply_count,
     reactions: reactionSummaries("post", row.id, viewerId),
     seen_by_me: !!db.prepare("SELECT 1 FROM seen WHERE user_id = ? AND post_id = ?").get(viewerId, row.id),
@@ -108,7 +111,7 @@ function toSummary(row: PostRow, viewerId: string): PostSummary {
 }
 
 const POST_SELECT = `
-  SELECT p.id, p.author_id, u.handle, u.display_name, p.body, p.render_mode, p.via, p.created_at, p.sort_key,
+  SELECT p.id, p.author_id, u.handle, u.display_name, p.body, p.render_mode, p.via, p.created_at, p.edited_at, p.sort_key,
          (SELECT COUNT(*) FROM replies r WHERE r.post_id = p.id) AS reply_count
   FROM posts p JOIN users u ON u.id = p.author_id`;
 
@@ -158,6 +161,7 @@ export function readFeed(
 export function catchUp(viewerId: string): {
   unseen_count: number;
   unseen_posts: PostSummary[];
+  asks: Ask[];
   note: string;
 } {
   const unseen = readFeed(viewerId, { filter: "unseen", limit: 20 });
@@ -166,13 +170,16 @@ export function catchUp(viewerId: string): {
       .prepare("SELECT COUNT(*) AS n FROM posts p WHERE NOT EXISTS (SELECT 1 FROM seen s WHERE s.user_id = ? AND s.post_id = p.id)")
       .get(viewerId) as { n: number }
   ).n;
+  const asks = asksFor(viewerId);
   return {
     unseen_count: count,
     unseen_posts: unseen.posts,
+    asks,
     note:
-      count === 0
-        ? "Your human is fully caught up on the room."
-        : "Summarize these conversationally for your human — lead with milestones and questions addressed to them.",
+      (count === 0 ? "Your human is fully caught up on the room. " : "Summarize these conversationally for your human — lead with milestones and questions addressed to them. ") +
+      (asks.length > 0
+        ? "asks[] contains @mentions of your human — if you can answer one from context, reply on that post via the reply tool."
+        : ""),
   };
 }
 
@@ -224,6 +231,7 @@ export function createPost(
   db.prepare(
     "INSERT INTO posts (id, author_id, body, render_mode, via, created_at, sort_key, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   ).run(id, authorId, body, renderMode, via, now, now, idempotencyKey ?? null);
+  recordMentions("post", id, id, authorId, body);
   return { post_id: id };
 }
 
@@ -252,6 +260,7 @@ export function createReply(
   db.prepare(
     "INSERT INTO replies (id, post_id, author_id, body, render_mode, via, created_at, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   ).run(id, postId, authorId, body, renderMode, via, Date.now(), idempotencyKey ?? null);
+  recordMentions("reply", id, postId, authorId, body);
   return { reply_id: id };
 }
 
@@ -293,4 +302,83 @@ export function markSeen(userId: string, postIds: string[]): void {
     for (const id of ids) stmt.run(userId, id, now);
   });
   tx(postIds);
+}
+
+// --- Asks: @handle mentions delivered to the mentioned member's agent (ADR-017) ---
+
+const MENTION_RE = /(?:^|[^a-zA-Z0-9_@])@([a-zA-Z0-9_]{2,24})/g;
+
+function recordMentions(sourceType: "post" | "reply", sourceId: string, postId: string, authorId: string, body: string): void {
+  db.prepare("DELETE FROM mentions WHERE source_type = ? AND source_id = ?").run(sourceType, sourceId);
+  const handles = new Set<string>();
+  for (const match of body.matchAll(MENTION_RE)) {
+    const handle = match[1];
+    if (handle) handles.add(handle.toLowerCase());
+  }
+  const now = Date.now();
+  for (const handle of handles) {
+    const user = db.prepare("SELECT id FROM users WHERE handle = ? COLLATE NOCASE").get(handle) as { id: string } | undefined;
+    if (!user || user.id === authorId) continue;
+    db.prepare(
+      "INSERT INTO mentions (id, source_type, source_id, post_id, mentioned_user_id, author_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).run(newId("m"), sourceType, sourceId, postId, user.id, authorId, now);
+  }
+}
+
+export interface Ask {
+  id: string;
+  post_id: string;
+  source_type: "post" | "reply";
+  from: Author;
+  snippet: string;
+  created_at: number;
+}
+
+export function asksFor(userId: string, limit = 10): Ask[] {
+  const rows = db
+    .prepare(
+      `SELECT m.id, m.post_id, m.source_type, m.source_id, m.created_at,
+              u.id AS from_id, u.handle, u.display_name
+       FROM mentions m JOIN users u ON u.id = m.author_id
+       WHERE m.mentioned_user_id = ? ORDER BY m.created_at DESC LIMIT ?`,
+    )
+    .all(userId, limit) as {
+    id: string; post_id: string; source_type: "post" | "reply"; source_id: string; created_at: number;
+    from_id: string; handle: string; display_name: string;
+  }[];
+  return rows.map((r) => {
+    const table = r.source_type === "post" ? "posts" : "replies";
+    const src = db.prepare(`SELECT body FROM ${table} WHERE id = ?`).get(r.source_id) as { body: string } | undefined;
+    return {
+      id: r.id,
+      post_id: r.post_id,
+      source_type: r.source_type,
+      from: { id: r.from_id, handle: r.handle, display_name: r.display_name },
+      snippet: (src?.body ?? "").slice(0, 280),
+      created_at: r.created_at,
+    };
+  });
+}
+
+// --- Living posts: authors (usually their agents) update a post in place (ADR-017) ---
+
+export function updatePost(
+  authorId: string,
+  postId: string,
+  body: string,
+  renderMode?: string,
+): { post_id: string; edited_at: number } {
+  validateBody(body);
+  const post = db.prepare("SELECT author_id, render_mode FROM posts WHERE id = ?").get(postId) as
+    | { author_id: string; render_mode: string }
+    | undefined;
+  if (!post) throw new ApiError(404, "Post not found");
+  if (post.author_id !== authorId) throw new ApiError(403, "You can only update your own posts");
+  const mode = renderMode ?? post.render_mode;
+  validateRenderMode(mode);
+  checkWriteRate(authorId);
+  const now = Date.now();
+  db.prepare("UPDATE posts SET body = ?, render_mode = ?, edited_at = ? WHERE id = ?").run(body, mode, now, postId);
+  recordMentions("post", postId, postId, authorId, body);
+  return { post_id: postId, edited_at: now };
 }

@@ -107,3 +107,17 @@ addColumn("posts", "via TEXT NOT NULL DEFAULT 'web'");
 addColumn("replies", "via TEXT NOT NULL DEFAULT 'web'");
 // Human presence (plan doc OPEN item, resolved): bumped by authed web activity.
 addColumn("users", "last_active_at INTEGER");
+
+// Asks (ADR-017): @handle mentions, delivered to the mentioned member's agent via catch_up.
+db.exec(`
+CREATE TABLE IF NOT EXISTS mentions (
+  id                TEXT PRIMARY KEY,
+  source_type       TEXT NOT NULL CHECK (source_type IN ('post','reply')),
+  source_id         TEXT NOT NULL,
+  post_id           TEXT NOT NULL,
+  mentioned_user_id TEXT NOT NULL REFERENCES users(id),
+  author_id         TEXT NOT NULL REFERENCES users(id),
+  created_at        INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_mentions_user ON mentions (mentioned_user_id, created_at DESC);
+`);

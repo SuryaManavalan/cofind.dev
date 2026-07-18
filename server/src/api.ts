@@ -82,6 +82,11 @@ api.post("/posts", async (c) => {
   return c.json(posts.createPost(c.get("user").id, body ?? "", render_mode ?? "text", idempotency_key), 201);
 });
 
+api.patch("/posts/:id", async (c) => {
+  const { body, render_mode } = await c.req.json();
+  return c.json(posts.updatePost(c.get("user").id, c.req.param("id"), body ?? "", render_mode));
+});
+
 api.post("/posts/:id/replies", async (c) => {
   const { body, render_mode, idempotency_key } = await c.req.json();
   return c.json(posts.createReply(c.get("user").id, c.req.param("id"), body ?? "", render_mode ?? "markdown", idempotency_key), 201);
