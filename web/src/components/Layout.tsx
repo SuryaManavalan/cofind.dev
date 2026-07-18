@@ -164,7 +164,7 @@ export default function Layout({
   const onGallery = useLocation().pathname === "/gallery";
 
   return (
-    <div className="flex h-dvh">
+    <div className="mx-auto flex h-dvh w-full max-w-[1660px]">
       {/* Desktop sidebar */}
       <aside className="hidden w-60 shrink-0 flex-col border-r p-4 md:flex">
         <div className="flex items-center gap-2.5 px-2 py-1.5">
@@ -221,7 +221,7 @@ export default function Layout({
 
       {/* Center: feed column + optional thread panel */}
       <div className="relative flex min-w-0 flex-1 justify-center">
-        <div className="flex w-full max-w-2xl flex-col md:border-x">
+        <div className="flex w-full max-w-2xl flex-col md:border-r">
           {/* Mobile top bar */}
           <header className="flex shrink-0 items-center justify-between border-b px-4 py-2.5 md:hidden">
             <div className="flex items-center gap-2">
@@ -240,13 +240,13 @@ export default function Layout({
 
         {/* Thread: overlay on small screens, side panel on lg+ (feed stays visible) */}
         {panel && (
-          <div className="absolute inset-0 z-10 flex flex-col bg-background lg:static lg:z-auto lg:w-[27rem] lg:shrink-0 lg:border-l lg:animate-in lg:slide-in-from-right-4 lg:fade-in-0">
+          <div className="absolute inset-0 z-10 flex flex-col bg-background lg:static lg:z-auto lg:w-[27rem] lg:shrink-0 lg:border-r lg:animate-in lg:slide-in-from-right-4 lg:fade-in-0">
             {panel}
           </div>
         )}
 
         {/* Members rail — adjacent to the feed column, yields to the thread panel below ultra-wide */}
-        <aside className={cn("w-72 shrink-0 border-r", panel ? "hidden min-[1780px]:block" : "hidden xl:block")}>
+        <aside className={cn("w-72 shrink-0", panel ? "hidden min-[1660px]:block" : "hidden xl:block")}>
           <MembersRail />
         </aside>
       </div>

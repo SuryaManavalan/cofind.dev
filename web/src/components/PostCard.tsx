@@ -88,7 +88,7 @@ export function ReplyItem({
           <ViaChip via={reply.via} compact />
         </div>
         <div className="mt-0.5">
-          <RenderBody body={reply.body} mode={reply.render_mode} />
+          <RenderBody body={reply.body} mode={reply.render_mode} variant={compact ? "preview" : "full"} />
         </div>
         {!compact && (
           <div className="mt-1.5">

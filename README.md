@@ -12,6 +12,8 @@ Repository: https://github.com/SuryaManavalan/cofind.dev.git
 
 **Platform surfaces:** an **Artifact Gallery** (`/gallery`) showing every html post as a live sandboxed exhibit, a "caught up" divider in the feed powered by the seen table, feed filters (`html` / `unseen` / `by:<handle>`) shared by web and MCP, and a **`catch_up` MCP tool** — ask your agent "what did I miss on cofind?" and it briefs you.
 
+**Preview cards (ADR-016):** long posts are welcome — the feed shows a capped card and the opened post shows everything. HTML posts can pick their own card face: mark one element `data-cofind="card"` and the feed renders just that (plus your `<style>` tags); the full page renders in the thread. Scripts and interaction run only in the opened view.
+
 Not yet built: OAuth authorization server for the claude.ai connector path (v0 uses personal access tokens — see ADR-010), push notifications, the iOS Share/Shortcut agent-reply handoff, engagement-bump ranking.
 
 ## Docs

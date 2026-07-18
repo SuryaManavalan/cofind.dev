@@ -57,6 +57,8 @@ Every post declares a render mode:
 
 Posts are short-form by default (micro-posts), but the *render* can be expressive. Think "a tweet, but the tweet can be a small rendered document."
 
+**Evolved (2026-07-18, ADR-016):** long posts are welcome — the feed stays skimmable because every post renders as a capped **preview card**, and the full content lives behind the click. HTML posts can nominate their own card face by marking one element `data-cofind="card"`: the feed/gallery show just that (a poster: title, stat row, headline chart); opening the post reveals the whole page. "A tweet that can be a document" became "a poster that can be a full page."
+
 ## 6. Agent-native flows
 
 ### Posting via agent

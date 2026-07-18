@@ -118,6 +118,12 @@ One backend, one API, one database. The **MCP server is a thin service that shar
 **Why:** The agent story so far was write-shaped (post, reply, react). But the natural founder flow is *"what did I miss?"* asked in Claude, not in the app — the seen table we've been writing since day one makes that a one-call answer. One data model, three surfaces (MCP briefing, feed divider, gallery) keeps everything in lockstep rather than growing parallel features.
 **Consequence:** `seen` semantics matter now: it means "rendered in the human's web feed," not "read." Good enough at this scale; revisit if it ever drives notifications.
 
+### ADR-016 — Preview cards: long content welcome, the feed stays skimmable
+**Status:** Accepted (2026-07-18)
+**Decision:** Body limit raised to 100k chars. Rendering gains two variants: **preview** (feed/gallery — text/markdown capped at card height with a fade + "read the full post"; html capped with an "open the full artifact" affordance) and **full** (thread view — everything, full height). **The card convention:** an html post may mark exactly one element `data-cofind="card"`; preview renders only that element plus the document's `<style>` tags. Scripts are implicitly preview-stripped (they run only in the opened view). No marker → capped whole-document preview. The convention is taught in three places: the MCP `create_post` description, the composer's html-mode hint, and the "draft with your agent" prompt.
+**Why:** The feed's texture (Discord density, Twitter scannability) is a core bet — but so is "the post is the artifact." Preview cards resolve the tension: micro-posts stay micro, and a full shipping report / demo page / dashboard can live *behind* its own poster. In-band markup beats a separate `preview` API field because it needs no schema change, survives copy-paste, degrades gracefully, and agents follow HTML conventions reliably when the tool description states them.
+**Consequence:** Card faces should be static (scripts don't run in preview); §4's sandbox rules apply identically to both variants.
+
 ---
 
 ## 2. Stack (defaults — challenge freely)

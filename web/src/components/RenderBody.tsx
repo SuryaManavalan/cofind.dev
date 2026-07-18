@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { Maximize2 } from "lucide-react";
 import type { RenderMode } from "../types";
 
 // THE rendering pipeline (architecture doc §4). Every body from every write path
 // (web composer or MCP tool) renders through this component. No entry point renders raw.
+//
+// Two variants (ADR-016):
+//   "preview" — feed/gallery card: capped height; html posts may nominate a
+//               [data-cofind="card"] element as their card face.
+//   "full"    — thread view: the whole document, whole height.
 
 marked.setOptions({ gfm: true, breaks: true });
 
@@ -14,6 +20,8 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
     node.setAttribute("rel", "noopener noreferrer");
   }
 });
+
+type Variant = "preview" | "full";
 
 const URL_RE = /(https?:\/\/[^\s<]+[^\s<.,;:!?')\]])/g;
 
@@ -43,7 +51,41 @@ function MarkdownBody({ body }: { body: string }) {
   return <div className="prose-post" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-const COLLAPSED_HEIGHT = 320;
+// Preview cap for text/markdown: card height with a fade + read-more affordance.
+const PREVIEW_MAX_PX = 416;
+
+function CappedPreview({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOverflowing(el.scrollHeight > PREVIEW_MAX_PX + 8);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="relative">
+      <div ref={ref} style={{ maxHeight: PREVIEW_MAX_PX }} className="overflow-hidden">
+        {children}
+      </div>
+      {overflowing && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-20 items-end justify-center bg-gradient-to-t from-background to-transparent pb-1">
+          <span className="flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-sm">
+            <Maximize2 className="size-3" /> read the full post
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const PREVIEW_FRAME_MAX = 320;
+const FULL_FRAME_MAX = 4000;
 
 // Strict CSP for the hostile frame: no network at all, inline style/script only,
 // data: images. Combined with sandbox (no allow-same-origin) the content can't
@@ -69,51 +111,85 @@ const FRAME_PRELUDE = `<meta http-equiv="Content-Security-Policy" content="${FRA
   });
 </script>`;
 
-function HtmlBody({ body }: { body: string }) {
+// The card convention (ADR-016): an html post may mark ONE element with
+// data-cofind="card". The feed/gallery render just that element (plus the
+// document's <style> tags) as the card face; the full document renders in the
+// thread view. Scripts are preview-stripped implicitly — they live outside the
+// card — so card faces stay static and cheap.
+function extractCard(body: string): string | null {
+  try {
+    const doc = new DOMParser().parseFromString(body, "text/html");
+    const card = doc.querySelector('[data-cofind="card"]');
+    if (!card) return null;
+    const styles = Array.from(doc.querySelectorAll("style"))
+      .map((s) => s.outerHTML)
+      .join("");
+    return styles + card.outerHTML;
+  } catch {
+    return null;
+  }
+}
+
+function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [contentHeight, setContentHeight] = useState(COLLAPSED_HEIGHT);
-  const [expanded, setExpanded] = useState(false);
+  const [contentHeight, setContentHeight] = useState(PREVIEW_FRAME_MAX);
+
+  const cardHtml = variant === "preview" ? extractCard(body) : null;
+  const frameBody = cardHtml ?? body;
+  const maxHeight = variant === "preview" ? PREVIEW_FRAME_MAX : FULL_FRAME_MAX;
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       if (e.source === iframeRef.current?.contentWindow && typeof e.data?.cofindFrameHeight === "number") {
-        setContentHeight(Math.min(Math.max(e.data.cofindFrameHeight, 48), 4000));
+        setContentHeight(Math.max(e.data.cofindFrameHeight, 48));
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  const overflows = contentHeight > COLLAPSED_HEIGHT;
+  const truncated = variant === "preview" && !cardHtml && contentHeight > PREVIEW_FRAME_MAX;
+
   return (
-    <div>
+    <div className="relative">
       <iframe
         ref={iframeRef}
         // Hostile by default (ADR-004): scripts allowed for the "little artifact"
         // case, but no same-origin, no top-navigation, no forms, no popups.
         sandbox="allow-scripts"
-        srcDoc={FRAME_PRELUDE + body}
+        srcDoc={FRAME_PRELUDE + frameBody}
         className="w-full rounded-lg border bg-muted/40 transition-[height]"
-        style={{ height: expanded ? contentHeight : Math.min(contentHeight, COLLAPSED_HEIGHT) }}
+        style={{ height: Math.min(contentHeight, maxHeight) }}
         title="post content"
       />
-      {overflows && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setExpanded(!expanded);
-          }}
-          className="mt-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          {expanded ? "Collapse" : "Expand"}
-        </button>
+      {variant === "preview" && (
+        // Click-shield: the sandboxed frame would otherwise swallow clicks, making
+        // the card dead to "open the thread." Previews are look-only; interaction
+        // (scripts, scrolling the artifact) belongs to the opened view.
+        <div className="absolute inset-0 cursor-pointer" />
+      )}
+      {variant === "preview" && (cardHtml || truncated) && (
+        <div className="pointer-events-none absolute bottom-2 right-2">
+          <span className="flex items-center gap-1.5 rounded-full border bg-card/90 px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+            <Maximize2 className="size-3" /> open the full artifact
+          </span>
+        </div>
       )}
     </div>
   );
 }
 
-export default function RenderBody({ body, mode }: { body: string; mode: RenderMode }) {
-  if (mode === "markdown") return <MarkdownBody body={body} />;
-  if (mode === "html") return <HtmlBody body={body} />;
-  return <TextBody body={body} />;
+export default function RenderBody({
+  body,
+  mode,
+  variant = "preview",
+}: {
+  body: string;
+  mode: RenderMode;
+  variant?: Variant;
+}) {
+  if (mode === "html") return <HtmlBody body={body} variant={variant} />;
+  const inner = mode === "markdown" ? <MarkdownBody body={body} /> : <TextBody body={body} />;
+  if (variant === "preview") return <CappedPreview>{inner}</CappedPreview>;
+  return inner;
 }

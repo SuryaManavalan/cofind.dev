@@ -90,7 +90,7 @@ function buildMcpServer(user: users.User): McpServer {
     "create_post",
     {
       title: "Create a post",
-      description: `Create a new post in the cofind feed as ${user.display_name} (@${user.handle}). render_mode 'markdown' renders rich Markdown; 'html' renders a sandboxed HTML artifact (inline CSS allowed, no external resources, no same-origin access); 'text' is plain text. Posts are short-form by default but the render can be expressive. Posts written through MCP are shown with an 'agent' provenance chip — the room values substance (real numbers, artifacts, changes) over vibes.`,
+      description: `Create a new post in the cofind feed as ${user.display_name} (@${user.handle}). render_mode 'markdown' renders rich Markdown; 'html' renders a sandboxed HTML artifact (inline CSS/JS allowed, no external resources, no same-origin access); 'text' is plain text. Long posts are welcome — the feed shows a capped preview card and the full content renders when the post is opened. THE CARD CONVENTION for html posts: mark exactly one element with data-cofind="card" and the feed/gallery show ONLY that element (plus your <style> tags) as the card face — design it like a poster: one glanceable summary under ~300px tall (a stat row, a headline chart, a title block). Everything else in the document appears when the post is opened. Scripts only run in the opened view. Posts written through MCP are shown with an 'agent' provenance chip — the room values substance (real numbers, artifacts, changes) over vibes.`,
       inputSchema: {
         body: z.string().describe("The post content"),
         render_mode: renderMode.describe("How the body should render"),

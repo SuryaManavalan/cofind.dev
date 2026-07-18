@@ -26,7 +26,7 @@ function AgentDraftDialog({
   // comes back server-side through MCP. Nothing round-trips through this UI.
   const prompt = postId
     ? `Use the cofind MCP to reply to post ${postId}. Call get_post first to read the thread, then draft a reply in my voice and call reply. Keep it concrete and warm — this is a small room of friends.`
-    : `Use the cofind MCP to post an update for me. Ask me what I shipped or learned today, then call create_post — render_mode "markdown" usually, or "html" if a small rendered artifact (chart, changelog, demo) tells it better. The room values real numbers and artifacts over vibes.`;
+    : `Use the cofind MCP to post an update for me. Ask me what I shipped or learned today, then call create_post — render_mode "markdown" usually, or "html" if a rendered artifact (chart, changelog, demo) tells it better. For html, mark one element data-cofind="card" as the compact card the feed shows; the full page renders when the post is opened. The room values real numbers and artifacts over vibes.`;
 
   async function copy() {
     await navigator.clipboard.writeText(prompt);
@@ -116,7 +116,7 @@ export default function Composer({
 
       {previewing && canPreview ? (
         <div className="mb-2 max-h-72 overflow-y-auto rounded-xl border bg-card px-3.5 py-2.5">
-          <RenderBody body={body.trim()} mode={mode} />
+          <RenderBody body={body.trim()} mode={mode} variant="full" />
         </div>
       ) : null}
 
@@ -185,6 +185,14 @@ export default function Composer({
           <Bot className="size-3.5" /> agent
         </button>
         <span className="hidden text-[11px] text-muted-foreground sm:block">⌘↵</span>
+      </div>
+      <div className="flex">
+        {mode === "html" && !postId && (
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            Long pages welcome — mark one element <code className="rounded bg-muted px-1">data-cofind="card"</code> and the feed
+            shows just that as the card; opening the post reveals everything.
+          </p>
+        )}
       </div>
 
       <AgentDraftDialog open={agentDialog} onOpenChange={setAgentDialog} postId={postId} />

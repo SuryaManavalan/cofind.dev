@@ -88,7 +88,7 @@ export default function ThreadView() {
               </div>
 
               <div className="mt-4 text-[15px]">
-                <RenderBody body={post.body} mode={post.render_mode} />
+                <RenderBody body={post.body} mode={post.render_mode} variant="full" />
               </div>
 
               <p className="mt-3 text-xs text-muted-foreground" title={new Date(post.created_at).toLocaleString()}>

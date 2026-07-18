@@ -7,7 +7,9 @@ export const RENDER_MODES: RenderMode[] = ["text", "markdown", "html"];
 // Curated reaction set tuned for building-in-public (plan doc §9 — resolved: curated over free emoji).
 export const REACTIONS = ["🚢", "🧠", "🔥", "👀", "🤝"] as const;
 
-const MAX_BODY_LENGTH = 20_000;
+// Long posts are welcome (ADR-016) — the feed stays skimmable because clients
+// render capped preview cards and only the opened post shows everything.
+const MAX_BODY_LENGTH = 100_000;
 
 export interface Author {
   id: string;
