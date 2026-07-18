@@ -7,7 +7,14 @@ node_modules/
 dist/
 build/
 out/
+dev-dist/
 *.tsbuildinfo
+
+# Local database
+data/
+*.db
+*.db-shm
+*.db-wal
 
 # Env
 .env

@@ -1,0 +1,17 @@
+{
+  "name": "cofind",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A build-in-public feed for a tiny circle of technical founders. Agent-native via MCP.",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=server & npm run dev --workspace=web & wait",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:web": "npm run dev --workspace=web",
+    "build": "npm run build --workspace=server && npm run build --workspace=web",
+    "start": "npm run start --workspace=server"
+  }
+}
