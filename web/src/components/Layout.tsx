@@ -45,28 +45,34 @@ function AgentPulse() {
 
 function MembersRail() {
   const { members } = useFeed();
+  const navigate = useNavigate();
   return (
     <div className="flex flex-col gap-7 overflow-y-auto p-6">
       <div>
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">The room</h2>
-        <ul className="space-y-3">
+        <ul className="space-y-1">
           {members.map((m) => {
             const online = isOnline(m.last_active_at);
             return (
-              <li key={m.id} className="flex items-center gap-2.5">
-                <div className="relative">
-                  <Avatar handle={m.handle} name={m.display_name} className="size-8 text-xs" />
-                  {online && (
-                    <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-emerald-500" />
-                  )}
-                </div>
-                <div className="min-w-0 leading-tight">
-                  <p className="truncate text-sm font-medium">{m.display_name}</p>
-                  <p className="truncate text-xs text-muted-foreground">@{m.handle}</p>
-                </div>
-                <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
-                  {online ? <span className="text-emerald-500">online</span> : m.last_active_at ? timeAgo(m.last_active_at) : "—"}
-                </span>
+              <li key={m.id}>
+                <button
+                  onClick={() => navigate(`/u/${m.handle}`)}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-accent"
+                >
+                  <div className="relative">
+                    <Avatar handle={m.handle} name={m.display_name} className="size-8 text-xs" />
+                    {online && (
+                      <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-emerald-500" />
+                    )}
+                  </div>
+                  <div className="min-w-0 leading-tight">
+                    <p className="truncate text-sm font-medium">{m.display_name}</p>
+                    <p className="truncate text-xs text-muted-foreground">@{m.handle}</p>
+                  </div>
+                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                    {online ? <span className="text-emerald-500">online</span> : m.last_active_at ? timeAgo(m.last_active_at) : "—"}
+                  </span>
+                </button>
               </li>
             );
           })}

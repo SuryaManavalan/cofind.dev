@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Check, Copy, Send } from "lucide-react";
-import type { RenderMode } from "../types";
+import type { Member, RenderMode } from "../types";
+import { useFeed } from "../feed-context";
 import { cn } from "@/lib/utils";
+import Avatar from "./Avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import RenderBody from "./RenderBody";
@@ -78,6 +80,48 @@ export default function Composer({
   const [previewing, setPreviewing] = useState(false);
   const [agentDialog, setAgentDialog] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { members } = useFeed();
+
+  // @mention autocomplete: track an in-progress "@quer" token before the caret.
+  const [mention, setMention] = useState<{ query: string; start: number } | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+
+  const suggestions: Member[] = mention
+    ? members
+        .filter(
+          (m) =>
+            m.handle.toLowerCase().startsWith(mention.query.toLowerCase()) ||
+            m.display_name.toLowerCase().startsWith(mention.query.toLowerCase()),
+        )
+        .slice(0, 5)
+    : [];
+
+  function syncMention(el: HTMLTextAreaElement) {
+    const upToCaret = el.value.slice(0, el.selectionStart ?? el.value.length);
+    const match = /(?:^|[\s(])@([a-zA-Z0-9_]{0,24})$/.exec(upToCaret);
+    if (match) {
+      setMention({ query: match[1] ?? "", start: upToCaret.length - (match[1]?.length ?? 0) - 1 });
+      setMentionIndex(0);
+    } else {
+      setMention(null);
+    }
+  }
+
+  function pickMention(member: Member) {
+    if (!mention) return;
+    const after = body.slice(mention.start + 1 + mention.query.length);
+    const next = `${body.slice(0, mention.start)}@${member.handle} ${after}`;
+    setBody(next);
+    setMention(null);
+    const caret = mention.start + member.handle.length + 2;
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(caret, caret);
+      }
+    });
+  }
 
   useEffect(() => {
     if (!listenForPalette) return;
@@ -121,21 +165,75 @@ export default function Composer({
       ) : null}
 
       <div className={cn("flex items-end gap-2", previewing && canPreview && "hidden")}>
-        <textarea
-          ref={textareaRef}
-          value={body}
-          onChange={(e) => {
-            setBody(e.target.value);
-            e.target.style.height = "auto";
-            e.target.style.height = `${Math.min(e.target.scrollHeight, 220)}px`;
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
-          }}
-          rows={1}
-          placeholder={placeholder}
-          className="min-h-9 flex-1 resize-none rounded-xl border border-input bg-transparent px-3.5 py-2 text-[15px] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-        />
+        <div className="relative min-w-0 flex-1">
+          {mention && suggestions.length > 0 && (
+            <div className="absolute bottom-[calc(100%+0.5rem)] left-0 z-20 w-72 overflow-hidden rounded-xl border bg-popover p-1 shadow-xl animate-in fade-in-0 zoom-in-95">
+              <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Ask someone — their agent gets it via catch_up
+              </p>
+              {suggestions.map((m, i) => (
+                <button
+                  key={m.id}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    pickMention(m);
+                  }}
+                  onMouseEnter={() => setMentionIndex(i)}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left",
+                    i === mentionIndex && "bg-accent",
+                  )}
+                >
+                  <Avatar handle={m.handle} name={m.display_name} className="size-6 text-[10px]" />
+                  <span className="truncate text-sm font-medium">{m.display_name}</span>
+                  <span className="truncate text-xs text-muted-foreground">@{m.handle}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <textarea
+            ref={textareaRef}
+            value={body}
+            onChange={(e) => {
+              setBody(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = `${Math.min(e.target.scrollHeight, 220)}px`;
+              syncMention(e.target);
+            }}
+            onClick={(e) => syncMention(e.currentTarget)}
+            onKeyDown={(e) => {
+              if (mention && suggestions.length > 0) {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setMentionIndex((i) => (i + 1) % suggestions.length);
+                  return;
+                }
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setMentionIndex((i) => (i - 1 + suggestions.length) % suggestions.length);
+                  return;
+                }
+                if (e.key === "Enter" || e.key === "Tab") {
+                  e.preventDefault();
+                  const pick = suggestions[mentionIndex];
+                  if (pick) pickMention(pick);
+                  return;
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMention(null);
+                  return;
+                }
+              }
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
+            }}
+            onBlur={() => setTimeout(() => setMention(null), 150)}
+            rows={1}
+            placeholder={placeholder}
+            className="min-h-9 w-full resize-none rounded-xl border border-input bg-transparent px-3.5 py-2 text-[15px] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          />
+        </div>
         <Button onClick={submit} disabled={!body.trim() || sending} size="icon" className="rounded-xl" title="Post (⌘↵)">
           <Send />
         </Button>

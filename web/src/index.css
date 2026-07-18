@@ -111,6 +111,19 @@
   }
 }
 
+/* @mentions (asks, ADR-017) — same treatment in every render mode. */
+.prose-post [data-mention] {
+  border-radius: 4px;
+  background: color-mix(in oklch, var(--brand) 12%, transparent);
+  padding: 0 2px;
+  font-weight: 500;
+  color: var(--brand);
+  cursor: pointer;
+}
+.prose-post [data-mention]:hover {
+  background: color-mix(in oklch, var(--brand) 22%, transparent);
+}
+
 /* Rendered markdown inside posts — tracks the theme tokens. */
 .prose-post {
   font-size: 0.9375rem;

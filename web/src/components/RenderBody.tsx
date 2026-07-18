@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { Maximize2 } from "lucide-react";
@@ -13,6 +14,28 @@ import type { RenderMode } from "../types";
 //   "full"    — thread view: the whole document, whole height.
 
 marked.setOptions({ gfm: true, breaks: true });
+
+// @mentions become styled, clickable spans in markdown too (asks, ADR-017).
+marked.use({
+  extensions: [
+    {
+      name: "mention",
+      level: "inline",
+      start(src: string) {
+        return src.match(/@[a-zA-Z0-9_]/)?.index;
+      },
+      tokenizer(src: string) {
+        const match = /^@([a-zA-Z0-9_]{2,24})/.exec(src);
+        if (match) return { type: "mention", raw: match[0], handle: match[1] };
+        return undefined;
+      },
+      renderer(token) {
+        const handle = (token as unknown as { handle: string }).handle;
+        return `<span data-mention="${handle}">@${handle}</span>`;
+      },
+    },
+  ],
+});
 
 DOMPurify.addHook("afterSanitizeAttributes", (node) => {
   if (node.tagName === "A") {
@@ -30,7 +53,7 @@ function withMentions(text: string, keyBase: string): React.ReactNode[] {
   return text.split(MENTION_SPLIT_RE).map((chunk, j) =>
     MENTION_SPLIT_RE.test(chunk) ? (
       // An ask (ADR-017): @handle routes to that member's agent via catch_up.
-      <span key={`${keyBase}-${j}`} className="rounded bg-brand/10 px-0.5 font-medium text-brand" title="Delivered to their agent via catch_up">
+      <span key={`${keyBase}-${j}`} data-mention={chunk.slice(1)} title="Delivered to their agent via catch_up — click for their profile">
         {chunk}
       </span>
     ) : (
@@ -202,8 +225,19 @@ export default function RenderBody({
   mode: RenderMode;
   variant?: Variant;
 }) {
+  const navigate = useNavigate();
   if (mode === "html") return <HtmlBody body={body} variant={variant} />;
   const inner = mode === "markdown" ? <MarkdownBody body={body} /> : <TextBody body={body} />;
-  if (variant === "preview") return <CappedPreview>{inner}</CappedPreview>;
-  return inner;
+  // Event delegation: any [data-mention] span (text or markdown) opens the
+  // member's profile without triggering the surrounding card's navigation.
+  const handleMentionClick = (e: React.MouseEvent) => {
+    const target = (e.target as HTMLElement).closest?.("[data-mention]") as HTMLElement | null;
+    if (target?.dataset.mention) {
+      e.stopPropagation();
+      navigate(`/u/${target.dataset.mention}`);
+    }
+  };
+  const wrapped = <div onClick={handleMentionClick}>{inner}</div>;
+  if (variant === "preview") return <CappedPreview>{wrapped}</CappedPreview>;
+  return wrapped;
 }

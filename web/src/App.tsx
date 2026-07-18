@@ -7,17 +7,20 @@ import AuthScreen from "./components/AuthScreen";
 import Layout from "./components/Layout";
 import FeedView from "./views/FeedView";
 import GalleryView from "./views/GalleryView";
+import ProfileView from "./views/ProfileView";
 import ThreadView from "./views/ThreadView";
 
 // The feed stays mounted underneath the thread overlay, so going "back" from a
 // thread returns to the exact scroll position — Twitter-style navigation.
 function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   const location = useLocation();
-  const panel = location.pathname.startsWith("/post/") ? (
-    <Routes>
-      <Route path="/post/:id" element={<ThreadView />} />
-    </Routes>
-  ) : null;
+  const panel =
+    location.pathname.startsWith("/post/") || location.pathname.startsWith("/u/") ? (
+      <Routes>
+        <Route path="/post/:id" element={<ThreadView />} />
+        <Route path="/u/:handle" element={<ProfileView />} />
+      </Routes>
+    ) : null;
   return (
     <FeedProvider user={user}>
       <Layout user={user} onLogout={onLogout} panel={panel}>
