@@ -54,6 +54,10 @@ const FRAME_PRELUDE = `<meta http-equiv="Content-Security-Policy" content="${FRA
 <style>
   :root { color-scheme: light dark; }
   body { margin: 8px; font-family: ui-sans-serif, system-ui, sans-serif; color: light-dark(#18181b, #fafafa); background: transparent; }
+  * { scrollbar-width: thin; scrollbar-color: rgba(128,128,140,.4) transparent; }
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: rgba(128,128,140,.4); border-radius: 8px; }
 </style>
 <script>
   // Measure the body, not documentElement — the latter reports the iframe

@@ -244,12 +244,12 @@ export default function Layout({
             {panel}
           </div>
         )}
-      </div>
 
-      {/* Members rail — yields to the thread panel below ultra-wide */}
-      <aside className={cn("w-72 shrink-0 border-l", panel ? "hidden min-[1780px]:block" : "hidden xl:block")}>
-        <MembersRail />
-      </aside>
+        {/* Members rail — adjacent to the feed column, yields to the thread panel below ultra-wide */}
+        <aside className={cn("w-72 shrink-0 border-r", panel ? "hidden min-[1780px]:block" : "hidden xl:block")}>
+          <MembersRail />
+        </aside>
+      </div>
 
       <Settings user={user} open={showSettings} onOpenChange={setShowSettings} onLogout={onLogout} />
       <CommandPalette openSettings={() => setShowSettings(true)} onLogout={onLogout} />

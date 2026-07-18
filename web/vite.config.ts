@@ -32,6 +32,11 @@ export default defineConfig({
         // App shell only — feed data stays network-first; never cache API responses.
         navigateFallbackDenylist: [/^\/api/, /^\/mcp/],
         runtimeCaching: [],
+        // Take over immediately so a reload always gets the newest shell —
+        // without these a deploy leaves tabs on the stale precache.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
     }),
   ],
