@@ -151,7 +151,7 @@ One backend, one API, one database. The **MCP server is a thin service that shar
 | DB | ~~Postgres~~ **SQLite for v0** (ADR-009) | Relational fits posts/replies/reactions/users cleanly. Zero-ops single file at this scale; SQL isolated behind the service layer so Postgres remains the growth path. |
 | Auth | An OAuth2-capable provider we can run as an **authorization server** for MCP (e.g. self-hosted via a library, or a managed IdP that supports DCR + custom clients). **v0 interim: invite-code sessions + personal access tokens (ADR-010)** | Required by ADR-001. Don't pick an auth tool that can only do human login. |
 | MCP server | TypeScript MCP SDK, **Streamable HTTP** transport, OAuth | SSE is being deprecated; use Streamable HTTP. Deploy as its own small service sharing DB + auth. |
-| Hosting | Single small deploy target (Fly/Render/Railway class) + managed Postgres | Right-sized for a 5-person app. |
+| Hosting | **Deployed 2026-07-18:** AWS Lightsail nano ($5/mo, SQLite on instance disk) + CloudFront (TLS via ACM, /assets/* cached immutably, everything else passed through) + Route 53. ~$5.50/mo total. | Cheapest CloudFront-fronted always-on origin; the IPv4 surcharge makes equivalent EC2 ~$7.4/mo. |
 | Realtime | Start with polling / lightweight refresh; add WebSocket/SSE for presence + live feed later | Don't build realtime infra before the feed even exists. |
 
 > **Note:** These are opinionated defaults so we can move. Any of them can be swapped without violating the ADRs, which are the real commitments.

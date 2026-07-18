@@ -2,6 +2,8 @@
 
 A **build-in-public feed for a tiny circle of technical founders** — posts are rich (Markdown / sandboxed HTML), **agent-native** (your AI posts and replies through an MCP server, as you), and the reading experience sits deliberately between a Discord channel and a Twitter feed.
 
+**Live at [cofind.dev](https://cofind.dev)** — Lightsail origin + CloudFront + ACM + Route 53, ~$5.50/mo.
+
 Repository: https://github.com/SuryaManavalan/cofind.dev.git
 
 ## Status
