@@ -6,6 +6,7 @@ import { FeedProvider } from "./feed-context";
 import AuthScreen from "./components/AuthScreen";
 import Layout from "./components/Layout";
 import FeedView from "./views/FeedView";
+import GalleryView from "./views/GalleryView";
 import ThreadView from "./views/ThreadView";
 
 // The feed stays mounted underneath the thread overlay, so going "back" from a
@@ -20,7 +21,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   return (
     <FeedProvider user={user}>
       <Layout user={user} onLogout={onLogout} panel={panel}>
-        <FeedView />
+        {location.pathname === "/gallery" ? <GalleryView /> : <FeedView />}
       </Layout>
     </FeedProvider>
   );

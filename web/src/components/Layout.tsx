@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Activity, Bot, Home, Settings as SettingsIcon } from "lucide-react";
+import { Activity, Bot, Home, LayoutGrid, Settings as SettingsIcon } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { User } from "../types";
 import { useFeed } from "../feed-context";
 import { cn, timeAgo } from "@/lib/utils";
@@ -93,14 +94,39 @@ function MembersRail() {
   );
 }
 
+// Mobile gets the same presence + agent-pulse signal as the desktop rail, one line tall.
+function MobilePulseStrip() {
+  const { members, activity } = useFeed();
+  const online = members.filter((m) => isOnline(m.last_active_at));
+  const lastAgent = activity[0];
+  if (members.length === 0) return null;
+  return (
+    <div className="flex items-center gap-2 border-b px-4 py-1.5 text-[11px] text-muted-foreground md:hidden">
+      <div className="flex -space-x-1">
+        {online.slice(0, 4).map((m) => (
+          <Avatar key={m.id} handle={m.handle} name={m.display_name} className="size-4.5 text-[8px] ring-1 ring-background" />
+        ))}
+      </div>
+      <span>{online.length > 0 ? `${online.length} online` : "nobody online"}</span>
+      {lastAgent && (
+        <span className="ml-auto flex items-center gap-1 truncate">
+          <Bot className="size-3 text-brand" />
+          @{lastAgent.handle}'s agent {TOOL_LABELS[lastAgent.tool] ?? lastAgent.tool} · {timeAgo(lastAgent.created_at)}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function FeedHeader() {
   const { members, activity } = useFeed();
   const online = members.filter((m) => isOnline(m.last_active_at));
   const lastAgent = activity[0];
+  const title = useLocation().pathname === "/gallery" ? "Gallery" : "Feed";
   return (
     <header className="hidden shrink-0 items-center justify-between border-b px-6 py-2.5 md:flex">
       <div className="flex items-center gap-2">
-        <h1 className="text-sm font-semibold">Feed</h1>
+        <h1 className="text-sm font-semibold">{title}</h1>
         {lastAgent && (
           <span className="flex items-center gap-1.5 rounded-full border border-brand/20 bg-brand/5 px-2 py-0.5 text-[11px] text-muted-foreground">
             <Bot className="size-3 text-brand" />
@@ -134,6 +160,8 @@ export default function Layout({
   children: React.ReactNode;
 }) {
   const [showSettings, setShowSettings] = useState(false);
+  const navigate = useNavigate();
+  const onGallery = useLocation().pathname === "/gallery";
 
   return (
     <div className="flex h-dvh">
@@ -148,8 +176,21 @@ export default function Layout({
         </div>
 
         <nav className="mt-6 space-y-1">
-          <Button variant="secondary" className="w-full justify-start" size="sm">
+          <Button
+            variant={onGallery ? "ghost" : "secondary"}
+            className={cn("w-full justify-start", onGallery && "text-muted-foreground")}
+            size="sm"
+            onClick={() => navigate("/")}
+          >
             <Home /> Feed
+          </Button>
+          <Button
+            variant={onGallery ? "secondary" : "ghost"}
+            className={cn("w-full justify-start", !onGallery && "text-muted-foreground")}
+            size="sm"
+            onClick={() => navigate("/gallery")}
+          >
+            <LayoutGrid /> Gallery
           </Button>
           <Button variant="ghost" className="w-full justify-start text-muted-foreground" size="sm" onClick={() => setShowSettings(true)}>
             <Bot /> Connect your agent
@@ -192,6 +233,7 @@ export default function Layout({
             </Button>
           </header>
 
+          <MobilePulseStrip />
           <FeedHeader />
           <div className="relative min-h-0 flex-1">{children}</div>
         </div>

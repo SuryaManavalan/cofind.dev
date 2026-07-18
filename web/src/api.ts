@@ -30,8 +30,13 @@ export const api = {
   members: () => request<{ members: Member[] }>("/members"),
   activity: () => request<{ activity: AgentActivity[] }>("/activity"),
   meta: () => request<{ reactions: string[] }>("/meta"),
-  feed: (cursor?: string) =>
-    request<{ posts: PostSummary[]; next_cursor?: string }>(`/feed${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
+  feed: (cursor?: string, filter?: string) => {
+    const params = new URLSearchParams();
+    if (cursor) params.set("cursor", cursor);
+    if (filter) params.set("filter", filter);
+    const qs = params.toString();
+    return request<{ posts: PostSummary[]; next_cursor?: string }>(`/feed${qs ? `?${qs}` : ""}`);
+  },
   getPost: (id: string) => request<{ post: PostSummary; replies: Reply[] }>(`/posts/${id}`),
   createPost: (body: string, render_mode: string) =>
     request<{ post_id: string }>("/posts", { method: "POST", body: JSON.stringify({ body, render_mode }) }),

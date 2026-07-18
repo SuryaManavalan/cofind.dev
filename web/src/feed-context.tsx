@@ -11,6 +11,7 @@ interface FeedState {
   reactions: string[];
   members: Member[];
   activity: AgentActivity[];
+  initialUnseen: Set<string>;
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
 }
@@ -31,11 +32,17 @@ export function FeedProvider({ user, children }: { user: User; children: React.R
   const [members, setMembers] = useState<Member[]>([]);
   const [activity, setActivity] = useState<AgentActivity[]>([]);
   const seenSent = useRef(new Set<string>());
+  // Snapshot of what was unseen when the session opened — powers the
+  // "caught up" divider even after we mark things seen.
+  const initialUnseen = useRef<Set<string> | null>(null);
 
   const refresh = useCallback(async () => {
     api.members().then((r) => setMembers(r.members)).catch(() => {});
     api.activity().then((r) => setActivity(r.activity)).catch(() => {});
     const page = await api.feed();
+    if (initialUnseen.current === null) {
+      initialUnseen.current = new Set(page.posts.filter((p) => !p.seen_by_me).map((p) => p.id));
+    }
     setPosts((prev) => {
       const pageIds = new Set(page.posts.map((p) => p.id));
       const oldest = page.posts[page.posts.length - 1];
@@ -77,7 +84,7 @@ export function FeedProvider({ user, children }: { user: User; children: React.R
   }, [posts]);
 
   return (
-    <FeedContext.Provider value={{ posts, nextCursor, loadingMore, reactions, members, activity, refresh, loadMore }}>
+    <FeedContext.Provider value={{ posts, nextCursor, loadingMore, reactions, members, activity, initialUnseen: initialUnseen.current ?? new Set(), refresh, loadMore }}>
       {children}
     </FeedContext.Provider>
   );

@@ -9,10 +9,17 @@ import Composer from "../components/Composer";
 import { Button } from "@/components/ui/button";
 
 export default function FeedView() {
-  const { posts, reactions, refresh, loadMore, nextCursor, loadingMore } = useFeed();
+  const { posts, reactions, refresh, loadMore, nextCursor, loadingMore, initialUnseen } = useFeed();
   const navigate = useNavigate();
   const [selected, setSelected] = useState(-1);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // "Caught up" divider: sits between what was new when you arrived and
+  // everything you'd already seen (powered by the seen table).
+  const dividerIndex =
+    initialUnseen.size > 0 && posts[0] && initialUnseen.has(posts[0].id)
+      ? posts.findIndex((p) => !initialUnseen.has(p.id))
+      : -1;
 
   // Keyboard-first navigation: j/k to move, enter to open, esc (in thread) to close.
   useEffect(() => {
@@ -51,14 +58,22 @@ export default function FeedView() {
         ) : (
           <>
             {posts.map((post, i) => (
-              <div
-                key={post.id}
-                ref={(el) => {
-                  cardRefs.current[i] = el;
-                }}
-                className={cn(selected === i && "ring-2 ring-inset ring-brand/40")}
-              >
-                <PostCard post={post} allReactions={reactions} onChange={refresh} />
+              <div key={post.id}>
+                {i === dividerIndex && i > 0 && (
+                  <div className="flex items-center gap-3 px-6 py-2">
+                    <div className="h-px flex-1 bg-brand/30" />
+                    <span className="text-[11px] font-medium uppercase tracking-wider text-brand">caught up</span>
+                    <div className="h-px flex-1 bg-brand/30" />
+                  </div>
+                )}
+                <div
+                  ref={(el) => {
+                    cardRefs.current[i] = el;
+                  }}
+                  className={cn(selected === i && "ring-2 ring-inset ring-brand/40")}
+                >
+                  <PostCard post={post} allReactions={reactions} onChange={refresh} />
+                </div>
               </div>
             ))}
             {nextCursor && (

@@ -29,6 +29,7 @@ export interface PostSummary {
   created_at: number;
   reply_count: number;
   reactions: ReactionSummary[];
+  seen_by_me: boolean;
 }
 
 export interface Reply {
