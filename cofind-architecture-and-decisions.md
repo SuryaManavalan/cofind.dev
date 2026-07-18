@@ -79,6 +79,28 @@ One backend, one API, one database. The **MCP server is a thin service that shar
 **Why:** iOS App Intents are invoked through system mediators (Siri, Spotlight, Shortcuts, Share sheet) — there's no private app-to-app intent call. Share/Shortcuts is the supported handoff. A PWA can trigger both (`<a href="shortcuts://…">`, Web Share API).
 **Open dependency:** whether an Ask-Claude turn from that entry point runs with the user's MCP connectors active and fires our tool. See §6.
 
+### ADR-009 — SQLite for v0, not Postgres
+**Status:** Accepted (v0 pivot, 2026-07-18)
+**Decision:** v0 ships on SQLite (better-sqlite3, WAL mode) instead of managed Postgres.
+**Why:** At 5–30 users a single-file, zero-ops DB removes an entire infrastructure dependency (provisioning, connection strings, migrations tooling) from day one. Write volume is trivially within SQLite's envelope. This is "ship the boring version first" applied to the data layer.
+**Consequence:** All SQL lives behind the service layer (`server/src/services/*`), so a Postgres swap is contained to that layer plus the schema DDL. Revisit when we deploy to a host where a single persistent volume is awkward, or if we ever need concurrent writers beyond one process.
+
+### ADR-010 — Personal access tokens for MCP auth in v0; full OAuth AS deferred
+**Status:** Accepted (v0 pivot, 2026-07-18)
+**Decision:** Agents authenticate to the MCP endpoint with a user-generated personal access token (Bearer header). The full OAuth authorization-server role (with DCR) that ADR-001 calls for is deferred to the next foundation milestone.
+**Why:** Standing up a spec-correct OAuth AS + DCR is the single largest chunk of foundation work, and it isn't needed to prove the core loop. PATs preserve the ADR-001 invariant that matters — **the agent resolves to the same user principal as the human** (tokens are rows scoped to a user; every tool call acts as that user) — while letting Claude Code, the API's MCP connector, and any header-capable MCP client connect today.
+**Consequence / honest limitation:** the claude.ai custom-connector UI path expects OAuth, so the marquee "add connector on claude.ai → syncs to mobile" onboarding is **not yet live**. OAuth AS + DCR is the prerequisite for the ADR-008 mobile handoff flow and is the first thing to build after the core loop proves out. The token tables (`access_tokens` now; `oauth_clients`/`oauth_tokens` later) are designed to coexist.
+
+### ADR-011 — MCP server mounts in the same process for v0
+**Status:** Accepted (v0 pivot, 2026-07-18)
+**Decision:** The MCP server is a route (`/mcp`, Streamable HTTP, stateless mode) on the same Node process as the API, not a separately deployed service.
+**Why:** §0's real requirement is that MCP shares the backend's DB and auth — same-process sharing is the strongest form of that. A second deploy target for a 5-person app is pure overhead. The MCP layer is already a separate module wrapping the same service layer, so extracting it into its own service later is mechanical.
+
+### ADR-012 — Curated reaction set
+**Status:** Accepted (resolves plan doc OPEN item, 2026-07-18)
+**Decision:** Reactions are a fixed curated set: 🚢 shipped, 🧠 insight, 🔥 fire, 👀 watching, 🤝 support. Reacting twice toggles off.
+**Why:** Curated reads more intentional at small scale and gives the room a shared vocabulary tuned for building-in-public. Free emoji can come later if the set feels confining.
+
 ---
 
 ## 2. Stack (defaults — challenge freely)
@@ -88,8 +110,8 @@ One backend, one API, one database. The **MCP server is a thin service that shar
 | Client | React + Vite, installable PWA | Fast, RN-portable if we go native; keep rendering logic framework-agnostic. |
 | Styling | Tailwind | Density/spacing control matters for the Discord-ish feel. |
 | Backend | TypeScript (Node) — Hono or Fastify | Same language as client + MCP; small surface. |
-| DB | Postgres | Relational fits posts/replies/reactions/users cleanly; JSONB for flexible post payloads. |
-| Auth | An OAuth2-capable provider we can run as an **authorization server** for MCP (e.g. self-hosted via a library, or a managed IdP that supports DCR + custom clients) | Required by ADR-001. Don't pick an auth tool that can only do human login. |
+| DB | ~~Postgres~~ **SQLite for v0** (ADR-009) | Relational fits posts/replies/reactions/users cleanly. Zero-ops single file at this scale; SQL isolated behind the service layer so Postgres remains the growth path. |
+| Auth | An OAuth2-capable provider we can run as an **authorization server** for MCP (e.g. self-hosted via a library, or a managed IdP that supports DCR + custom clients). **v0 interim: invite-code sessions + personal access tokens (ADR-010)** | Required by ADR-001. Don't pick an auth tool that can only do human login. |
 | MCP server | TypeScript MCP SDK, **Streamable HTTP** transport, OAuth | SSE is being deprecated; use Streamable HTTP. Deploy as its own small service sharing DB + auth. |
 | Hosting | Single small deploy target (Fly/Render/Railway class) + managed Postgres | Right-sized for a 5-person app. |
 | Realtime | Start with polling / lightweight refresh; add WebSocket/SSE for presence + live feed later | Don't build realtime infra before the feed even exists. |

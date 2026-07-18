@@ -91,8 +91,8 @@ These shape onboarding and are not things we control:
 
 ## 9. Open product questions
 
-- **OPEN — Reactions taxonomy.** Free emoji, or a small curated set tuned for building-in-public (🚢 shipped, 🧠 insight, 🔥, 👀, 🤝)? Curated reads more intentional at small scale.
-- **OPEN — Threading model.** Flat replies (Twitter) vs. nested (Discord/Slack). Leaning flat with a single level of reply for v0.
+- **RESOLVED (2026-07-18) — Reactions taxonomy.** Curated set: 🚢 shipped, 🧠 insight, 🔥, 👀, 🤝. Curated reads more intentional at small scale and gives the room a shared vocabulary. Free emoji reconsidered later if the set feels confining. (ADR-012.)
+- **RESOLVED (2026-07-18) — Threading model.** Flat, single level of reply, for v0 — shipped that way. Schema can grow `parent_reply_id` if nesting is ever pulled by real pain.
 - **OPEN — Presence.** Do we show who's online / who's "building right now"? Cheap way to buy back groupchat warmth.
 - **OPEN — Membership & invites.** Invite-only by definition. Single shared room, or eventual multiple rooms/spaces? Start single-room.
 - **OPEN — Identity.** Real names among friends, or handles? Probably real-ish, since trust is the whole point.
