@@ -101,6 +101,17 @@ One backend, one API, one database. The **MCP server is a thin service that shar
 **Decision:** Reactions are a fixed curated set: 🚢 shipped, 🧠 insight, 🔥 fire, 👀 watching, 🤝 support. Reacting twice toggles off.
 **Why:** Curated reads more intentional at small scale and gives the room a shared vocabulary tuned for building-in-public. Free emoji can come later if the set feels confining.
 
+### ADR-013 — Provenance-by-design: agent authorship is visible, and agent activity is ambient UI
+**Status:** Accepted (research-driven, 2026-07-18 — see `research/x-research-2026-07-18.md`)
+**Decision:** Every post/reply records `via: 'web' | 'agent'` (set server-side by entry point — the web API writes `web`, MCP tools write `agent`; clients can't spoof it). Agent-authored content renders with a positively-styled "agent" chip. The MCP audit log is surfaced in the UI as a live **"agent pulse"** rail showing recent tool calls by whose agent.
+**Why:** A ~2,200-post X sweep showed the strongest sentiment in the space: people despise *undisclosed* AI engagement ("blocked for ai reply"), but celebrate AI-authored work that is disclosed and substantive. Ambiguity is what breeds resentment; in a consented room, labeled agent authorship is a feature. The pulse rail doubles down: agents are visible *actors* in the room, not hidden middleware — and it makes the room feel alive between human posts.
+**Consequence:** MCP tool descriptions tell agents their posts will be labeled and that the room values substance over vibes — steering agent output toward what the culture rewards. The audit log is now product surface, so its retention/shape matters beyond ops.
+
+### ADR-014 — Presence: lightweight last-active tracking
+**Status:** Accepted (resolves plan doc OPEN item, 2026-07-18)
+**Decision:** `users.last_active_at`, bumped (throttled) by authed web activity. UI shows an online dot (< 5 min) on members and an online cluster in the feed header. Agent MCP calls do **not** count as human presence — they surface in the agent pulse instead.
+**Why:** Cheap groupchat warmth — founders' rooms live and die by "is anyone here." Separating human presence from agent activity keeps both signals honest.
+
 ---
 
 ## 2. Stack (defaults — challenge freely)

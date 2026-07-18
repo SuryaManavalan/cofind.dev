@@ -93,7 +93,7 @@ These shape onboarding and are not things we control:
 
 - **RESOLVED (2026-07-18) — Reactions taxonomy.** Curated set: 🚢 shipped, 🧠 insight, 🔥, 👀, 🤝. Curated reads more intentional at small scale and gives the room a shared vocabulary. Free emoji reconsidered later if the set feels confining. (ADR-012.)
 - **RESOLVED (2026-07-18) — Threading model.** Flat, single level of reply, for v0 — shipped that way. Schema can grow `parent_reply_id` if nesting is ever pulled by real pain.
-- **OPEN — Presence.** Do we show who's online / who's "building right now"? Cheap way to buy back groupchat warmth.
+- **RESOLVED (2026-07-18) — Presence.** Yes — online dots (last-active < 5 min) plus an online cluster in the feed header. Human presence and agent activity are deliberately separate signals: agents get their own live "agent pulse" rail instead of faking human presence. (ADR-013/014; driven by X research showing founders' rooms need "is anyone here" warmth and that agent activity must be disclosed, not disguised.)
 - **OPEN — Membership & invites.** Invite-only by definition. Single shared room, or eventual multiple rooms/spaces? Start single-room.
 - **OPEN — Identity.** Real names among friends, or handles? Probably real-ish, since trust is the whole point.
 - **OPEN — ChatGPT parity.** We verified the Claude path. ChatGPT's custom-connector + handoff story is separate and unresearched. Decide whether v0 is Claude-only.
