@@ -1,4 +1,4 @@
-import type { AccessToken, PostSummary, Reply, User } from "./types";
+import type { AccessToken, AgentActivity, Member, PostSummary, Reply, User } from "./types";
 
 class ApiError extends Error {
   constructor(
@@ -27,7 +27,8 @@ export const api = {
     request<{ user: User }>("/auth/login", { method: "POST", body: JSON.stringify({ handle, password }) }),
   logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
   me: () => request<{ user: User }>("/me"),
-  members: () => request<{ members: User[] }>("/members"),
+  members: () => request<{ members: Member[] }>("/members"),
+  activity: () => request<{ activity: AgentActivity[] }>("/activity"),
   meta: () => request<{ reactions: string[] }>("/meta"),
   feed: (cursor?: string) =>
     request<{ posts: PostSummary[]; next_cursor?: string }>(`/feed${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),

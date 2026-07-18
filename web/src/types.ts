@@ -1,4 +1,5 @@
 export type RenderMode = "text" | "markdown" | "html";
+export type Via = "web" | "agent";
 
 export interface User {
   id: string;
@@ -24,6 +25,7 @@ export interface PostSummary {
   author: Author;
   body: string;
   render_mode: RenderMode;
+  via: Via;
   created_at: number;
   reply_count: number;
   reactions: ReactionSummary[];
@@ -35,6 +37,7 @@ export interface Reply {
   author: Author;
   body: string;
   render_mode: RenderMode;
+  via: Via;
   created_at: number;
   reactions: ReactionSummary[];
 }
@@ -44,4 +47,17 @@ export interface AccessToken {
   label: string;
   created_at: number;
   last_used_at: number | null;
+}
+
+export interface Member extends User {
+  last_active_at: number | null;
+}
+
+export interface AgentActivity {
+  id: number;
+  tool: string;
+  ok: boolean;
+  created_at: number;
+  handle: string;
+  display_name: string;
 }

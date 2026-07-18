@@ -1,34 +1,82 @@
-import { useEffect, useState } from "react";
-import { Bot, Home, Settings as SettingsIcon } from "lucide-react";
+import { useState } from "react";
+import { Activity, Bot, Home, Settings as SettingsIcon } from "lucide-react";
 import type { User } from "../types";
-import { api } from "../api";
+import { useFeed } from "../feed-context";
+import { cn, timeAgo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Avatar from "./Avatar";
 import Settings from "./Settings";
-import { timeAgo } from "@/lib/utils";
+import CommandPalette from "./CommandPalette";
+
+const ONLINE_WINDOW_MS = 5 * 60 * 1000;
+
+function isOnline(lastActive: number | null): boolean {
+  return !!lastActive && Date.now() - lastActive < ONLINE_WINDOW_MS;
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  read_feed: "read the feed",
+  get_post: "read a thread",
+  create_post: "posted",
+  reply: "replied",
+  react: "reacted",
+};
+
+function AgentPulse() {
+  const { activity } = useFeed();
+  if (activity.length === 0) {
+    return <p className="text-xs leading-relaxed text-muted-foreground">Quiet so far — no agent has acted in the room yet.</p>;
+  }
+  return (
+    <ul className="space-y-2.5">
+      {activity.slice(0, 8).map((a) => (
+        <li key={a.id} className="flex items-center gap-2 text-xs">
+          <span className={cn("relative flex size-1.5 shrink-0 rounded-full", a.ok ? "bg-brand" : "bg-destructive")} />
+          <span className="truncate text-muted-foreground">
+            <span className="font-medium text-foreground">@{a.handle}</span>'s agent {TOOL_LABELS[a.tool] ?? a.tool}
+          </span>
+          <span className="ml-auto shrink-0 tabular-nums text-muted-foreground/70">{timeAgo(a.created_at)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function MembersRail() {
-  const [members, setMembers] = useState<User[]>([]);
-  useEffect(() => {
-    api.members().then((r) => setMembers(r.members)).catch(() => {});
-  }, []);
-
+  const { members } = useFeed();
   return (
-    <aside className="hidden w-72 shrink-0 flex-col gap-6 overflow-y-auto p-6 xl:flex">
+    <div className="flex flex-col gap-7 overflow-y-auto p-6">
       <div>
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">The room</h2>
         <ul className="space-y-3">
-          {members.map((m) => (
-            <li key={m.id} className="flex items-center gap-2.5">
-              <Avatar handle={m.handle} name={m.display_name} className="size-8 text-xs" />
-              <div className="min-w-0 leading-tight">
-                <p className="truncate text-sm font-medium">{m.display_name}</p>
-                <p className="truncate text-xs text-muted-foreground">@{m.handle}</p>
-              </div>
-              <span className="ml-auto text-[11px] text-muted-foreground">joined {timeAgo(m.created_at)}</span>
-            </li>
-          ))}
+          {members.map((m) => {
+            const online = isOnline(m.last_active_at);
+            return (
+              <li key={m.id} className="flex items-center gap-2.5">
+                <div className="relative">
+                  <Avatar handle={m.handle} name={m.display_name} className="size-8 text-xs" />
+                  {online && (
+                    <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-emerald-500" />
+                  )}
+                </div>
+                <div className="min-w-0 leading-tight">
+                  <p className="truncate text-sm font-medium">{m.display_name}</p>
+                  <p className="truncate text-xs text-muted-foreground">@{m.handle}</p>
+                </div>
+                <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                  {online ? <span className="text-emerald-500">online</span> : m.last_active_at ? timeAgo(m.last_active_at) : "—"}
+                </span>
+              </li>
+            );
+          })}
         </ul>
+      </div>
+
+      <div>
+        <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <Activity className="size-3.5 text-brand" /> Agent pulse
+        </h2>
+        <AgentPulse />
       </div>
 
       <div className="rounded-xl border bg-card p-4">
@@ -41,17 +89,48 @@ function MembersRail() {
           client at <code className="rounded bg-muted px-1 py-0.5">/mcp</code>.
         </p>
       </div>
-    </aside>
+    </div>
+  );
+}
+
+function FeedHeader() {
+  const { members, activity } = useFeed();
+  const online = members.filter((m) => isOnline(m.last_active_at));
+  const lastAgent = activity[0];
+  return (
+    <header className="hidden shrink-0 items-center justify-between border-b px-6 py-2.5 md:flex">
+      <div className="flex items-center gap-2">
+        <h1 className="text-sm font-semibold">Feed</h1>
+        {lastAgent && (
+          <span className="flex items-center gap-1.5 rounded-full border border-brand/20 bg-brand/5 px-2 py-0.5 text-[11px] text-muted-foreground">
+            <Bot className="size-3 text-brand" />
+            last agent action {timeAgo(lastAgent.created_at)}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex -space-x-1.5">
+          {online.slice(0, 5).map((m) => (
+            <Avatar key={m.id} handle={m.handle} name={m.display_name} className="size-6 text-[10px] ring-2 ring-background" />
+          ))}
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {online.length > 0 ? `${online.length} online` : "nobody online"}
+        </span>
+      </div>
+    </header>
   );
 }
 
 export default function Layout({
   user,
   onLogout,
+  panel,
   children,
 }: {
   user: User;
   onLogout: () => void;
+  panel: React.ReactNode | null;
   children: React.ReactNode;
 }) {
   const [showSettings, setShowSettings] = useState(false);
@@ -77,7 +156,14 @@ export default function Layout({
           </Button>
         </nav>
 
-        <div className="mt-auto">
+        <div className="mt-auto space-y-3">
+          <button
+            onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
+            className="flex w-full items-center justify-between rounded-lg border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent"
+          >
+            Command palette
+            <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+          </button>
           <button
             onClick={() => setShowSettings(true)}
             className="flex w-full items-center gap-2.5 rounded-lg p-2 text-left transition-colors hover:bg-accent"
@@ -92,9 +178,9 @@ export default function Layout({
         </div>
       </aside>
 
-      {/* Center column */}
-      <div className="flex min-w-0 flex-1 justify-center">
-        <div className="relative flex w-full max-w-2xl flex-col border-x-0 md:border-x">
+      {/* Center: feed column + optional thread panel */}
+      <div className="relative flex min-w-0 flex-1 justify-center">
+        <div className="flex w-full max-w-2xl flex-col md:border-x">
           {/* Mobile top bar */}
           <header className="flex shrink-0 items-center justify-between border-b px-4 py-2.5 md:hidden">
             <div className="flex items-center gap-2">
@@ -106,13 +192,25 @@ export default function Layout({
             </Button>
           </header>
 
+          <FeedHeader />
           <div className="relative min-h-0 flex-1">{children}</div>
         </div>
+
+        {/* Thread: overlay on small screens, side panel on lg+ (feed stays visible) */}
+        {panel && (
+          <div className="absolute inset-0 z-10 flex flex-col bg-background lg:static lg:z-auto lg:w-[27rem] lg:shrink-0 lg:border-l lg:animate-in lg:slide-in-from-right-4 lg:fade-in-0">
+            {panel}
+          </div>
+        )}
       </div>
 
-      <MembersRail />
+      {/* Members rail — yields to the thread panel below ultra-wide */}
+      <aside className={cn("w-72 shrink-0 border-l", panel ? "hidden min-[1780px]:block" : "hidden xl:block")}>
+        <MembersRail />
+      </aside>
 
       <Settings user={user} open={showSettings} onOpenChange={setShowSettings} onLogout={onLogout} />
+      <CommandPalette openSettings={() => setShowSettings(true)} onLogout={onLogout} />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { api } from "../api";
 import { cn, timeAgo } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import Avatar from "./Avatar";
+import ViaChip from "./ViaChip";
 import RenderBody from "./RenderBody";
 
 export function ReactionBar({
@@ -80,10 +81,11 @@ export function ReplyItem({
     <div className="flex gap-3">
       <Avatar handle={reply.author.handle} name={reply.author.display_name} className={compact ? "size-7 text-xs" : "size-8 text-xs"} />
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2 text-xs">
+        <div className="flex items-center gap-2 text-xs">
           <span className="font-semibold text-foreground">{reply.author.display_name}</span>
           <span className="text-muted-foreground">@{reply.author.handle}</span>
           <span className="text-muted-foreground">{timeAgo(reply.created_at)}</span>
+          <ViaChip via={reply.via} compact />
         </div>
         <div className="mt-0.5">
           <RenderBody body={reply.body} mode={reply.render_mode} />
@@ -133,13 +135,14 @@ export default function PostCard({
       <div className="flex gap-3">
         <Avatar handle={post.author.handle} name={post.author.display_name} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm">
             <span className="font-semibold">{post.author.display_name}</span>
             <span className="text-muted-foreground">@{post.author.handle}</span>
             <span className="text-muted-foreground/60">·</span>
             <span className="text-muted-foreground" title={new Date(post.created_at).toLocaleString()}>
               {timeAgo(post.created_at)}
             </span>
+            <ViaChip via={post.via} />
             {post.render_mode !== "text" && (
               <Badge variant={post.render_mode === "html" ? "brand" : "outline"} className="ml-auto">
                 {post.render_mode === "markdown" ? "md" : post.render_mode}

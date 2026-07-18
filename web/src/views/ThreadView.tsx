@@ -41,11 +41,21 @@ export default function ThreadView() {
     await Promise.all([load(), refreshFeed()]);
   }, [load, refreshFeed]);
 
-  const back = () => (window.history.length > 1 ? navigate(-1) : navigate("/"));
+  const back = useCallback(() => (window.history.length > 1 ? navigate(-1) : navigate("/")), [navigate]);
+
+  // Esc closes the thread — pairs with j/k/enter feed navigation.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (e.key === "Escape" && target.tagName !== "INPUT" && target.tagName !== "TEXTAREA") back();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [back]);
 
   return (
-    <div className="absolute inset-0 z-10 flex flex-col bg-background">
-      <header className="flex h-13 shrink-0 items-center gap-3 border-b px-3 py-2.5 sm:px-4">
+    <div className="flex h-full min-h-0 flex-col">
+      <header className="flex shrink-0 items-center gap-3 border-b px-3 py-2.5 sm:px-4">
         <Button variant="ghost" size="icon-sm" onClick={back} title="Back">
           <ArrowLeft />
         </Button>
@@ -114,6 +124,7 @@ export default function ThreadView() {
       <Composer
         placeholder="Reply (markdown ok)…"
         defaultMode="markdown"
+        postId={id}
         onSubmit={async (body, mode) => {
           if (!id) return;
           await api.createReply(id, body, mode);

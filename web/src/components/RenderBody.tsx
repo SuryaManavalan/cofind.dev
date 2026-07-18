@@ -56,9 +56,13 @@ const FRAME_PRELUDE = `<meta http-equiv="Content-Security-Policy" content="${FRA
   body { margin: 8px; font-family: ui-sans-serif, system-ui, sans-serif; color: light-dark(#18181b, #fafafa); background: transparent; }
 </style>
 <script>
-  const report = () => parent.postMessage({ cofindFrameHeight: document.documentElement.scrollHeight }, "*");
-  addEventListener("load", report);
-  new ResizeObserver(report).observe(document.documentElement);
+  // Measure the body, not documentElement — the latter reports the iframe
+  // viewport height, which would lock in dead space below short content.
+  const report = () => parent.postMessage({ cofindFrameHeight: document.body.scrollHeight + 18 }, "*");
+  addEventListener("load", () => {
+    report();
+    new ResizeObserver(report).observe(document.body);
+  });
 </script>`;
 
 function HtmlBody({ body }: { body: string }) {
@@ -69,7 +73,7 @@ function HtmlBody({ body }: { body: string }) {
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       if (e.source === iframeRef.current?.contentWindow && typeof e.data?.cofindFrameHeight === "number") {
-        setContentHeight(Math.min(e.data.cofindFrameHeight + 16, 4000));
+        setContentHeight(Math.min(Math.max(e.data.cofindFrameHeight, 48), 4000));
       }
     };
     window.addEventListener("message", onMessage);

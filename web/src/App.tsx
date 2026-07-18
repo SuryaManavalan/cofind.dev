@@ -12,15 +12,15 @@ import ThreadView from "./views/ThreadView";
 // thread returns to the exact scroll position — Twitter-style navigation.
 function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   const location = useLocation();
+  const panel = location.pathname.startsWith("/post/") ? (
+    <Routes>
+      <Route path="/post/:id" element={<ThreadView />} />
+    </Routes>
+  ) : null;
   return (
     <FeedProvider user={user}>
-      <Layout user={user} onLogout={onLogout}>
+      <Layout user={user} onLogout={onLogout} panel={panel}>
         <FeedView />
-        {location.pathname.startsWith("/post/") && (
-          <Routes>
-            <Route path="/post/:id" element={<ThreadView />} />
-          </Routes>
-        )}
       </Layout>
     </FeedProvider>
   );

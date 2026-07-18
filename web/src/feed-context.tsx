@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import type { PostSummary, User } from "./types";
+import type { AgentActivity, Member, PostSummary, User } from "./types";
 import { api } from "./api";
 
 const POLL_MS = 15_000; // v0 feed sync is polling (architecture doc §7); realtime comes later.
@@ -9,6 +9,8 @@ interface FeedState {
   nextCursor?: string;
   loadingMore: boolean;
   reactions: string[];
+  members: Member[];
+  activity: AgentActivity[];
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
 }
@@ -26,9 +28,13 @@ export function FeedProvider({ user, children }: { user: User; children: React.R
   const [nextCursor, setNextCursor] = useState<string | undefined>();
   const [loadingMore, setLoadingMore] = useState(false);
   const [reactions, setReactions] = useState<string[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [activity, setActivity] = useState<AgentActivity[]>([]);
   const seenSent = useRef(new Set<string>());
 
   const refresh = useCallback(async () => {
+    api.members().then((r) => setMembers(r.members)).catch(() => {});
+    api.activity().then((r) => setActivity(r.activity)).catch(() => {});
     const page = await api.feed();
     setPosts((prev) => {
       const pageIds = new Set(page.posts.map((p) => p.id));
@@ -71,7 +77,7 @@ export function FeedProvider({ user, children }: { user: User; children: React.R
   }, [posts]);
 
   return (
-    <FeedContext.Provider value={{ posts, nextCursor, loadingMore, reactions, refresh, loadMore }}>
+    <FeedContext.Provider value={{ posts, nextCursor, loadingMore, reactions, members, activity, refresh, loadMore }}>
       {children}
     </FeedContext.Provider>
   );
