@@ -1,0 +1,93 @@
+import Database from "better-sqlite3";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+
+const DB_PATH = process.env.COFIND_DB_PATH ?? "data/cofind.db";
+
+mkdirSync(dirname(DB_PATH), { recursive: true });
+
+export const db = new Database(DB_PATH);
+db.pragma("journal_mode = WAL");
+db.pragma("foreign_keys = ON");
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT PRIMARY KEY,
+  handle        TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  display_name  TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id),
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+
+-- Personal access tokens: how agents authenticate to the MCP endpoint as the user
+-- (v0 stand-in for the full OAuth authorization server; see ADR-010).
+CREATE TABLE IF NOT EXISTS access_tokens (
+  id           TEXT PRIMARY KEY,
+  user_id      TEXT NOT NULL REFERENCES users(id),
+  token_hash   TEXT NOT NULL UNIQUE,
+  label        TEXT NOT NULL,
+  created_at   INTEGER NOT NULL,
+  last_used_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS posts (
+  id              TEXT PRIMARY KEY,
+  author_id       TEXT NOT NULL REFERENCES users(id),
+  body            TEXT NOT NULL,
+  render_mode     TEXT NOT NULL CHECK (render_mode IN ('text','markdown','html')),
+  created_at      INTEGER NOT NULL,
+  sort_key        INTEGER NOT NULL,
+  edited_at       INTEGER,
+  idempotency_key TEXT,
+  UNIQUE (author_id, idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS idx_posts_sort ON posts (sort_key DESC, id DESC);
+
+CREATE TABLE IF NOT EXISTS replies (
+  id              TEXT PRIMARY KEY,
+  post_id         TEXT NOT NULL REFERENCES posts(id),
+  author_id       TEXT NOT NULL REFERENCES users(id),
+  body            TEXT NOT NULL,
+  render_mode     TEXT NOT NULL CHECK (render_mode IN ('text','markdown','html')),
+  created_at      INTEGER NOT NULL,
+  idempotency_key TEXT,
+  UNIQUE (author_id, idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS idx_replies_post ON replies (post_id, created_at);
+
+CREATE TABLE IF NOT EXISTS reactions (
+  id          TEXT PRIMARY KEY,
+  target_type TEXT NOT NULL CHECK (target_type IN ('post','reply')),
+  target_id   TEXT NOT NULL,
+  user_id     TEXT NOT NULL REFERENCES users(id),
+  reaction    TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  UNIQUE (target_type, target_id, user_id, reaction)
+);
+CREATE INDEX IF NOT EXISTS idx_reactions_target ON reactions (target_type, target_id);
+
+CREATE TABLE IF NOT EXISTS seen (
+  user_id TEXT NOT NULL REFERENCES users(id),
+  post_id TEXT NOT NULL REFERENCES posts(id),
+  seen_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, post_id)
+);
+
+-- Audit trail for MCP tool calls (architecture doc §7: observability).
+CREATE TABLE IF NOT EXISTS mcp_log (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    TEXT NOT NULL,
+  tool       TEXT NOT NULL,
+  args_json  TEXT NOT NULL,
+  ok         INTEGER NOT NULL,
+  error      TEXT,
+  created_at INTEGER NOT NULL
+);
+`);
