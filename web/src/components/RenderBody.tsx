@@ -24,6 +24,20 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
 type Variant = "preview" | "full";
 
 const URL_RE = /(https?:\/\/[^\s<]+[^\s<.,;:!?')\]])/g;
+const MENTION_SPLIT_RE = /(@[a-zA-Z0-9_]{2,24})/g;
+
+function withMentions(text: string, keyBase: string): React.ReactNode[] {
+  return text.split(MENTION_SPLIT_RE).map((chunk, j) =>
+    MENTION_SPLIT_RE.test(chunk) ? (
+      // An ask (ADR-017): @handle routes to that member's agent via catch_up.
+      <span key={`${keyBase}-${j}`} className="rounded bg-brand/10 px-0.5 font-medium text-brand" title="Delivered to their agent via catch_up">
+        {chunk}
+      </span>
+    ) : (
+      chunk
+    ),
+  );
+}
 
 function TextBody({ body }: { body: string }) {
   const parts = body.split(URL_RE);
@@ -35,7 +49,7 @@ function TextBody({ body }: { body: string }) {
             {part}
           </a>
         ) : (
-          part
+          withMentions(part, String(i))
         ),
       )}
     </p>

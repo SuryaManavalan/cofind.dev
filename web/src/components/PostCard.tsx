@@ -143,6 +143,14 @@ export default function PostCard({
               {timeAgo(post.created_at)}
             </span>
             <ViaChip via={post.via} />
+            {post.edited_at && (
+              <span
+                className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-500"
+                title={`Updated ${new Date(post.edited_at).toLocaleString()} — a living post`}
+              >
+                updated {timeAgo(post.edited_at)}
+              </span>
+            )}
             {post.render_mode !== "text" && (
               <Badge variant={post.render_mode === "html" ? "brand" : "outline"} className="ml-auto">
                 {post.render_mode === "markdown" ? "md" : post.render_mode}

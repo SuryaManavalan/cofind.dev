@@ -27,6 +27,7 @@ export interface PostSummary {
   render_mode: RenderMode;
   via: Via;
   created_at: number;
+  edited_at: number | null;
   reply_count: number;
   reactions: ReactionSummary[];
   seen_by_me: boolean;
