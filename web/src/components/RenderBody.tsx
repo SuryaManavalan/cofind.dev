@@ -23,7 +23,7 @@ function TextBody({ body }: { body: string }) {
     <p className="prose-post whitespace-pre-wrap">
       {parts.map((part, i) =>
         URL_RE.test(part) ? (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-iris underline underline-offset-2">
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-brand underline underline-offset-2">
             {part}
           </a>
         ) : (
@@ -52,8 +52,8 @@ const FRAME_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'un
 
 const FRAME_PRELUDE = `<meta http-equiv="Content-Security-Policy" content="${FRAME_CSP}">
 <style>
-  :root { color-scheme: dark; }
-  body { margin: 8px; font-family: ui-sans-serif, system-ui, sans-serif; color: #eef1f6; background: transparent; }
+  :root { color-scheme: light dark; }
+  body { margin: 8px; font-family: ui-sans-serif, system-ui, sans-serif; color: light-dark(#18181b, #fafafa); background: transparent; }
 </style>
 <script>
   const report = () => parent.postMessage({ cofindFrameHeight: document.documentElement.scrollHeight }, "*");
@@ -85,13 +85,19 @@ function HtmlBody({ body }: { body: string }) {
         // case, but no same-origin, no top-navigation, no forms, no popups.
         sandbox="allow-scripts"
         srcDoc={FRAME_PRELUDE + body}
-        className="w-full rounded-lg border border-edge bg-panel-2 transition-[height]"
+        className="w-full rounded-lg border bg-muted/40 transition-[height]"
         style={{ height: expanded ? contentHeight : Math.min(contentHeight, COLLAPSED_HEIGHT) }}
         title="post content"
       />
       {overflows && (
-        <button onClick={() => setExpanded(!expanded)} className="mt-1 text-xs text-mist hover:text-fog">
-          {expanded ? "collapse ▲" : "expand ▼"}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(!expanded);
+          }}
+          className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          {expanded ? "Collapse" : "Expand"}
         </button>
       )}
     </div>

@@ -1,65 +1,142 @@
+@import "@fontsource-variable/inter";
 @import "tailwindcss";
+@import "tw-animate-css";
 
-@theme {
-  --color-ink: #0c0e12;
-  --color-panel: #14171d;
-  --color-panel-2: #1a1e26;
-  --color-edge: #262b35;
-  --color-mist: #8b93a3;
-  --color-fog: #c6ccd8;
-  --color-snow: #eef1f6;
-  --color-mint: #6ee7b7;
-  --color-iris: #818cf8;
+/*
+ * shadcn/ui zinc theme (Tailwind v4, CSS-variable tokens).
+ * Light/dark follow the OS via prefers-color-scheme — swap any value here
+ * to retheme the whole app.
+ */
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: oklch(0.21 0.006 285.885);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.705 0.015 286.067);
+  --brand: oklch(0.541 0.281 293.009);
 }
 
-html,
-body {
-  background: var(--color-ink);
-  color: var(--color-snow);
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.141 0.005 285.823);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.18 0.005 285.885);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.21 0.006 285.885);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.92 0.004 286.32);
+    --primary-foreground: oklch(0.21 0.006 285.885);
+    --secondary: oklch(0.274 0.006 286.033);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.274 0.006 286.033);
+    --muted-foreground: oklch(0.705 0.015 286.067);
+    --accent: oklch(0.274 0.006 286.033);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.552 0.016 285.938);
+    --brand: oklch(0.702 0.183 293.541);
+  }
 }
 
-/* Rendered markdown inside post cards */
+@theme inline {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Rendered markdown inside posts — tracks the theme tokens. */
 .prose-post {
   font-size: 0.9375rem;
-  line-height: 1.55;
+  line-height: 1.6;
   word-break: break-word;
 }
 .prose-post h1, .prose-post h2, .prose-post h3 {
-  font-weight: 700;
-  margin: 0.75em 0 0.35em;
+  font-weight: 650;
+  margin: 0.8em 0 0.35em;
   line-height: 1.25;
+  letter-spacing: -0.01em;
 }
+.prose-post h1:first-child, .prose-post h2:first-child, .prose-post h3:first-child, .prose-post p:first-child { margin-top: 0; }
 .prose-post h1 { font-size: 1.25em; }
 .prose-post h2 { font-size: 1.15em; }
 .prose-post h3 { font-size: 1.05em; }
-.prose-post p { margin: 0.4em 0; }
-.prose-post a { color: var(--color-iris); text-decoration: underline; text-underline-offset: 2px; }
+.prose-post p { margin: 0.45em 0; }
+.prose-post a { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in oklch, var(--brand) 40%, transparent); }
+.prose-post a:hover { text-decoration-color: var(--brand); }
 .prose-post code {
-  background: var(--color-panel-2);
-  border: 1px solid var(--color-edge);
-  border-radius: 4px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
   padding: 0.1em 0.35em;
-  font-size: 0.875em;
+  font-size: 0.85em;
 }
 .prose-post pre {
-  background: var(--color-panel-2);
-  border: 1px solid var(--color-edge);
-  border-radius: 8px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 0.75em 1em;
   overflow-x: auto;
   margin: 0.6em 0;
 }
 .prose-post pre code { background: none; border: none; padding: 0; }
-.prose-post ul, .prose-post ol { padding-left: 1.4em; margin: 0.4em 0; }
+.prose-post ul, .prose-post ol { padding-left: 1.4em; margin: 0.45em 0; }
 .prose-post ul { list-style: disc; }
 .prose-post ol { list-style: decimal; }
 .prose-post blockquote {
-  border-left: 3px solid var(--color-edge);
+  border-left: 3px solid var(--border);
   padding-left: 0.9em;
-  color: var(--color-fog);
+  color: var(--muted-foreground);
   margin: 0.5em 0;
 }
 .prose-post table { border-collapse: collapse; margin: 0.6em 0; }
-.prose-post th, .prose-post td { border: 1px solid var(--color-edge); padding: 0.3em 0.7em; }
-.prose-post img { max-width: 100%; border-radius: 8px; }
-.prose-post hr { border-color: var(--color-edge); margin: 0.8em 0; }
+.prose-post th, .prose-post td { border: 1px solid var(--border); padding: 0.3em 0.7em; }
+.prose-post img { max-width: 100%; border-radius: var(--radius); }
+.prose-post hr { border-color: var(--border); margin: 0.9em 0; }

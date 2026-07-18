@@ -1,17 +1,27 @@
 import { useRef, useState } from "react";
+import { Send } from "lucide-react";
 import type { RenderMode } from "../types";
-import { api } from "../api";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const MODES: { value: RenderMode; label: string; hint: string }[] = [
-  { value: "text", label: "text", hint: "plain text" },
-  { value: "markdown", label: "md", hint: "rendered markdown" },
-  { value: "html", label: "html", hint: "sandboxed html artifact" },
+  { value: "text", label: "text", hint: "Plain text" },
+  { value: "markdown", label: "md", hint: "Rendered markdown" },
+  { value: "html", label: "html", hint: "Sandboxed HTML artifact" },
 ];
 
 // Bottom-anchored composer (ADR-003): chat muscle memory, feed reading ergonomics.
-export default function Composer({ onPosted }: { onPosted: () => void }) {
+export default function Composer({
+  placeholder,
+  defaultMode = "text",
+  onSubmit,
+}: {
+  placeholder: string;
+  defaultMode?: RenderMode;
+  onSubmit: (body: string, mode: RenderMode) => Promise<void>;
+}) {
   const [body, setBody] = useState("");
-  const [mode, setMode] = useState<RenderMode>("text");
+  const [mode, setMode] = useState<RenderMode>(defaultMode);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -22,20 +32,19 @@ export default function Composer({ onPosted }: { onPosted: () => void }) {
     setSending(true);
     setError(null);
     try {
-      await api.createPost(trimmed, mode);
+      await onSubmit(trimmed, mode);
       setBody("");
       if (textareaRef.current) textareaRef.current.style.height = "auto";
-      onPosted();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to post");
+      setError(err instanceof Error ? err.message : "Failed to send");
     } finally {
       setSending(false);
     }
   }
 
   return (
-    <div className="border-t border-edge bg-panel px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
-      {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
+    <div className="border-t bg-background/80 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:px-6">
+      {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
       <div className="flex items-end gap-2">
         <textarea
           ref={textareaRef}
@@ -43,22 +52,18 @@ export default function Composer({ onPosted }: { onPosted: () => void }) {
           onChange={(e) => {
             setBody(e.target.value);
             e.target.style.height = "auto";
-            e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`;
+            e.target.style.height = `${Math.min(e.target.scrollHeight, 220)}px`;
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
           }}
           rows={1}
-          placeholder="What are you building?"
-          className="min-w-0 flex-1 resize-none rounded-xl border border-edge bg-panel-2 px-3.5 py-2.5 text-[15px] outline-none placeholder:text-mist focus:border-mist"
+          placeholder={placeholder}
+          className="min-h-9 flex-1 resize-none rounded-xl border border-input bg-transparent px-3.5 py-2 text-[15px] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         />
-        <button
-          onClick={submit}
-          disabled={!body.trim() || sending}
-          className="rounded-xl bg-mint px-4 py-2.5 text-sm font-bold text-ink transition-opacity hover:opacity-90 disabled:opacity-40"
-        >
-          Post
-        </button>
+        <Button onClick={submit} disabled={!body.trim() || sending} size="icon" className="rounded-xl" title="Post (⌘↵)">
+          <Send />
+        </Button>
       </div>
       <div className="mt-2 flex items-center gap-1">
         {MODES.map((m) => (
@@ -66,14 +71,15 @@ export default function Composer({ onPosted }: { onPosted: () => void }) {
             key={m.value}
             onClick={() => setMode(m.value)}
             title={m.hint}
-            className={`rounded-md px-2 py-0.5 text-[11px] uppercase tracking-wide transition-colors ${
-              mode === m.value ? "bg-edge text-snow" : "text-mist hover:text-fog"
-            }`}
+            className={cn(
+              "rounded-md px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider transition-colors",
+              mode === m.value ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
           >
             {m.label}
           </button>
         ))}
-        <span className="ml-auto text-[11px] text-mist">⌘↵ to post</span>
+        <span className="ml-auto hidden text-[11px] text-muted-foreground sm:block">⌘↵ to send</span>
       </div>
     </div>
   );

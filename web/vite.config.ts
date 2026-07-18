@@ -4,6 +4,11 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@": new URL("./src", import.meta.url).pathname,
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -14,8 +19,8 @@ export default defineConfig({
         name: "cofind",
         short_name: "cofind",
         description: "A build-in-public feed for a tiny circle of technical founders",
-        theme_color: "#0c0e12",
-        background_color: "#0c0e12",
+        theme_color: "#09090b",
+        background_color: "#09090b",
         display: "standalone",
         start_url: "/",
         icons: [

@@ -27,6 +27,7 @@ export const api = {
     request<{ user: User }>("/auth/login", { method: "POST", body: JSON.stringify({ handle, password }) }),
   logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
   me: () => request<{ user: User }>("/me"),
+  members: () => request<{ members: User[] }>("/members"),
   meta: () => request<{ reactions: string[] }>("/meta"),
   feed: (cursor?: string) =>
     request<{ posts: PostSummary[]; next_cursor?: string }>(`/feed${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),

@@ -1,38 +1,21 @@
 import { useState } from "react";
-import type { PostSummary, Reply } from "../types";
+import { useNavigate } from "react-router-dom";
+import { MessageCircle, Plus } from "lucide-react";
+import type { PostSummary, ReactionSummary, Reply } from "../types";
 import { api } from "../api";
+import { cn, timeAgo } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import Avatar from "./Avatar";
 import RenderBody from "./RenderBody";
 
-const AVATAR_COLORS = ["#6ee7b7", "#818cf8", "#f9a8d4", "#fcd34d", "#7dd3fc", "#fca5a5"];
-
-export function Avatar({ handle, name }: { handle: string; name: string }) {
-  const color = AVATAR_COLORS[[...handle].reduce((a, ch) => a + ch.charCodeAt(0), 0) % AVATAR_COLORS.length];
-  return (
-    <div
-      className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-ink"
-      style={{ background: color }}
-    >
-      {name.slice(0, 1).toUpperCase()}
-    </div>
-  );
-}
-
-export function timeAgo(ts: number): string {
-  const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60) return "now";
-  if (s < 3600) return `${Math.floor(s / 60)}m`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h`;
-  return `${Math.floor(s / 86400)}d`;
-}
-
-function ReactionBar({
+export function ReactionBar({
   targetId,
   reactions,
   allReactions,
   onChange,
 }: {
   targetId: string;
-  reactions: PostSummary["reactions"];
+  reactions: ReactionSummary[];
   allReactions: string[];
   onChange: () => void;
 }) {
@@ -45,30 +28,33 @@ function ReactionBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
       {reactions.map((r) => (
         <button
           key={r.reaction}
           onClick={() => toggle(r.reaction)}
-          className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
-            r.reacted_by_me ? "border-iris/60 bg-iris/15 text-snow" : "border-edge bg-panel-2 text-fog hover:border-mist"
-          }`}
+          className={cn(
+            "flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs tabular-nums transition-colors",
+            r.reacted_by_me
+              ? "border-brand/40 bg-brand/10 text-foreground"
+              : "border-border bg-transparent text-muted-foreground hover:border-ring hover:text-foreground",
+          )}
         >
-          {r.reaction} {r.count}
+          <span className="text-sm leading-none">{r.reaction}</span> {r.count}
         </button>
       ))}
       <div className="relative">
         <button
           onClick={() => setPicking(!picking)}
-          className="rounded-full border border-edge px-2 py-0.5 text-xs text-mist hover:border-mist hover:text-fog"
-          title="react"
+          className="flex size-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-ring hover:text-foreground"
+          title="Add reaction"
         >
-          +
+          <Plus className="size-3.5" />
         </button>
         {picking && (
-          <div className="absolute bottom-7 left-0 z-10 flex gap-1 rounded-xl border border-edge bg-panel-2 p-1.5 shadow-xl">
+          <div className="absolute bottom-9 left-0 z-10 flex gap-0.5 rounded-xl border bg-popover p-1 shadow-md animate-in fade-in-0 zoom-in-95">
             {allReactions.map((emoji) => (
-              <button key={emoji} onClick={() => toggle(emoji)} className="rounded-lg p-1 text-lg hover:bg-edge">
+              <button key={emoji} onClick={() => toggle(emoji)} className="rounded-lg p-1.5 text-lg leading-none hover:bg-accent">
                 {emoji}
               </button>
             ))}
@@ -79,6 +65,41 @@ function ReactionBar({
   );
 }
 
+export function ReplyItem({
+  reply,
+  allReactions,
+  onChange,
+  compact = false,
+}: {
+  reply: Reply;
+  allReactions: string[];
+  onChange: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <div className="flex gap-3">
+      <Avatar handle={reply.author.handle} name={reply.author.display_name} className={compact ? "size-7 text-xs" : "size-8 text-xs"} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2 text-xs">
+          <span className="font-semibold text-foreground">{reply.author.display_name}</span>
+          <span className="text-muted-foreground">@{reply.author.handle}</span>
+          <span className="text-muted-foreground">{timeAgo(reply.created_at)}</span>
+        </div>
+        <div className="mt-0.5">
+          <RenderBody body={reply.body} mode={reply.render_mode} />
+        </div>
+        {!compact && (
+          <div className="mt-1.5">
+            <ReactionBar targetId={reply.id} reactions={reply.reactions} allReactions={allReactions} onChange={onChange} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const REPLY_PREVIEW_COUNT = 3;
+
 export default function PostCard({
   post,
   allReactions,
@@ -88,103 +109,69 @@ export default function PostCard({
   allReactions: string[];
   onChange: () => void;
 }) {
-  const [thread, setThread] = useState<Reply[] | null>(null);
-  const [replyText, setReplyText] = useState("");
-  const [sending, setSending] = useState(false);
+  const navigate = useNavigate();
+  const [preview, setPreview] = useState<Reply[] | null>(null);
 
-  async function loadThread() {
+  const open = () => navigate(`/post/${post.id}`);
+
+  async function loadPreview() {
     const { replies } = await api.getPost(post.id);
-    setThread(replies);
+    setPreview(replies.slice(0, REPLY_PREVIEW_COUNT));
   }
 
-  async function toggleThread() {
-    if (thread) setThread(null);
-    else await loadThread();
-  }
-
-  async function sendReply() {
-    const body = replyText.trim();
-    if (!body || sending) return;
-    setSending(true);
-    try {
-      await api.createReply(post.id, body);
-      setReplyText("");
-      await loadThread();
-      onChange();
-    } finally {
-      setSending(false);
-    }
+  async function togglePreview(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (preview) setPreview(null);
+    else await loadPreview();
   }
 
   return (
-    <article className="border-b border-edge px-4 py-3 transition-colors hover:bg-panel/60">
+    <article
+      onClick={open}
+      className="group cursor-pointer border-b px-4 py-4 transition-colors hover:bg-accent/40 sm:px-6"
+    >
       <div className="flex gap-3">
         <Avatar handle={post.author.handle} name={post.author.display_name} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 text-sm">
             <span className="font-semibold">{post.author.display_name}</span>
-            <span className="text-mist">@{post.author.handle}</span>
-            <span className="text-mist">·</span>
-            <span className="text-mist" title={new Date(post.created_at).toLocaleString()}>
+            <span className="text-muted-foreground">@{post.author.handle}</span>
+            <span className="text-muted-foreground/60">·</span>
+            <span className="text-muted-foreground" title={new Date(post.created_at).toLocaleString()}>
               {timeAgo(post.created_at)}
             </span>
             {post.render_mode !== "text" && (
-              <span className="ml-auto rounded border border-edge px-1.5 py-px text-[10px] uppercase tracking-wide text-mist">
-                {post.render_mode}
-              </span>
+              <Badge variant={post.render_mode === "html" ? "brand" : "outline"} className="ml-auto">
+                {post.render_mode === "markdown" ? "md" : post.render_mode}
+              </Badge>
             )}
           </div>
-          <div className="mt-1">
+
+          <div className="mt-1.5">
             <RenderBody body={post.body} mode={post.render_mode} />
           </div>
-          <div className="mt-2 flex items-center gap-3">
+
+          <div className="mt-3 flex items-center gap-2">
             <ReactionBar targetId={post.id} reactions={post.reactions} allReactions={allReactions} onChange={onChange} />
-            <button onClick={toggleThread} className="text-xs text-mist hover:text-fog">
-              {thread ? "hide replies" : post.reply_count > 0 ? `${post.reply_count} ${post.reply_count === 1 ? "reply" : "replies"}` : "reply"}
+            <button
+              onClick={post.reply_count > 0 ? togglePreview : open}
+              className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <MessageCircle className="size-3.5" />
+              {post.reply_count > 0 ? post.reply_count : "Reply"}
             </button>
           </div>
 
-          {thread && (
-            <div className="mt-3 space-y-3 border-l-2 border-edge pl-3">
-              {thread.map((reply) => (
-                <div key={reply.id} className="flex gap-2">
-                  <Avatar handle={reply.author.handle} name={reply.author.display_name} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2 text-xs">
-                      <span className="font-semibold text-snow">{reply.author.display_name}</span>
-                      <span className="text-mist">@{reply.author.handle}</span>
-                      <span className="text-mist">{timeAgo(reply.created_at)}</span>
-                    </div>
-                    <div className="mt-0.5">
-                      <RenderBody body={reply.body} mode={reply.render_mode} />
-                    </div>
-                    <div className="mt-1">
-                      <ReactionBar
-                        targetId={reply.id}
-                        reactions={reply.reactions}
-                        allReactions={allReactions}
-                        onChange={loadThread}
-                      />
-                    </div>
-                  </div>
-                </div>
+          {preview && (
+            <div className="mt-3 space-y-3 border-l-2 pl-4" onClick={(e) => e.stopPropagation()}>
+              {preview.map((reply) => (
+                <ReplyItem key={reply.id} reply={reply} allReactions={allReactions} onChange={loadPreview} compact />
               ))}
-              <div className="flex gap-2">
-                <input
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendReply()}
-                  placeholder="Reply (markdown ok)…"
-                  className="min-w-0 flex-1 rounded-lg border border-edge bg-panel-2 px-3 py-1.5 text-sm outline-none placeholder:text-mist focus:border-mist"
-                />
-                <button
-                  onClick={sendReply}
-                  disabled={!replyText.trim() || sending}
-                  className="rounded-lg bg-iris/90 px-3 py-1.5 text-sm font-semibold text-ink hover:bg-iris disabled:opacity-40"
-                >
-                  Reply
-                </button>
-              </div>
+              <button onClick={open} className="text-xs font-medium text-brand hover:underline underline-offset-4">
+                {post.reply_count > REPLY_PREVIEW_COUNT
+                  ? `Show all ${post.reply_count} replies`
+                  : "Open thread"}
+              </button>
             </div>
           )}
         </div>
