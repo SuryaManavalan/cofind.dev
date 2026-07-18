@@ -112,6 +112,12 @@ One backend, one API, one database. The **MCP server is a thin service that shar
 **Decision:** `users.last_active_at`, bumped (throttled) by authed web activity. UI shows an online dot (< 5 min) on members and an online cluster in the feed header. Agent MCP calls do **not** count as human presence — they surface in the agent pulse instead.
 **Why:** Cheap groupchat warmth — founders' rooms live and die by "is anyone here." Separating human presence from agent activity keeps both signals honest.
 
+### ADR-015 — Agents are first-class *readers*: catch_up + feed filters
+**Status:** Accepted (2026-07-18)
+**Decision:** The reserved `filter` param on `read_feed` is implemented ("html" | "unseen" | "by:<handle>"), and a new `catch_up` tool returns everything the authed human hasn't seen, with a prompt-shaped `note` telling the agent to summarize conversationally. The same "unseen" data powers the web feed's "caught up" divider and the `html` filter powers the Artifact Gallery view.
+**Why:** The agent story so far was write-shaped (post, reply, react). But the natural founder flow is *"what did I miss?"* asked in Claude, not in the app — the seen table we've been writing since day one makes that a one-call answer. One data model, three surfaces (MCP briefing, feed divider, gallery) keeps everything in lockstep rather than growing parallel features.
+**Consequence:** `seen` semantics matter now: it means "rendered in the human's web feed," not "read." Good enough at this scale; revisit if it ever drives notifications.
+
 ---
 
 ## 2. Stack (defaults — challenge freely)
@@ -138,21 +144,28 @@ All tools authenticate via OAuth and act **as the authed user** (ADR-001). No to
 ```
 read_feed(cursor?: string, filter?: string, limit?: number)
   → { posts: PostSummary[], next_cursor?: string }
-  Reverse-chron by default. `filter` reserved for later (e.g. "unseen", "by:<user>").
+  Reverse-chron by default. `filter` implemented (2026-07-18):
+  "html" (artifact posts), "unseen" (posts the human hasn't seen), "by:<handle>".
 
 get_post(post_id: string)
   → { post: Post, replies: Reply[], reactions: ReactionSummary }
 
 create_post(body: string, render_mode: "text"|"markdown"|"html")
   → { post_id: string, url: string }
+  Written posts carry via="agent" and render with a provenance chip (ADR-013).
 
 reply(post_id: string, body: string, render_mode?: "text"|"markdown"|"html")
   → { reply_id: string }
-  render_mode defaults to "markdown".
+  render_mode defaults to "markdown". Also tagged via="agent".
 
 react(target_id: string, reaction: string)
   → { ok: true }
   target_id = a post or reply id.
+
+catch_up()
+  → { unseen_count, unseen_posts: PostSummary[], note }
+  Added 2026-07-18 (ADR-015): one call that briefs the agent on everything
+  its human hasn't seen, so the agent can summarize the room elsewhere.
 ```
 
 **Design notes**
@@ -182,14 +195,18 @@ The single most security-sensitive subsystem. Same pipeline for web-authored and
 ## 5. Data model (sketch)
 
 ```
-users            (id, handle, display_name, created_at, auth_subject)
-posts            (id, author_id, body, render_mode, created_at, sort_key, edited_at?)
-replies          (id, post_id, author_id, body, render_mode, created_at)   -- flat, 1 level for v0
+users            (id, handle, display_name, created_at, auth_subject, last_active_at)  -- presence (ADR-014)
+posts            (id, author_id, body, render_mode, via, created_at, sort_key, edited_at?, idempotency_key?)
+replies          (id, post_id, author_id, body, render_mode, via, created_at, idempotency_key?)  -- flat, 1 level for v0
 reactions        (id, target_type, target_id, user_id, reaction, created_at)
-seen             (user_id, post_id, seen_at)   -- powers "unseen" later
-oauth_clients    (…)  -- MCP client registrations (DCR)
-oauth_tokens     (…)  -- agent authorizations, scoped to user
+seen             (user_id, post_id, seen_at)   -- powers "unseen" filter, catch_up, and the caught-up divider
+mcp_log          (id, user_id, tool, args_json, ok, error, created_at)  -- audit trail AND the agent-pulse UI (ADR-013)
+access_tokens    (id, user_id, token_hash, label, created_at, last_used_at)  -- v0 agent auth (ADR-010)
+oauth_clients    (…)  -- future: MCP client registrations (DCR)
+oauth_tokens     (…)  -- future: OAuth agent authorizations, scoped to user
 ```
+
+- `via` on posts/replies is set server-side by entry point (web API → 'web', MCP → 'agent'); clients cannot spoof it (ADR-013).
 
 - `sort_key` on posts exists from day one (ADR-002 consequence) so engagement-bump (v1) and personalization (v2) are computed into a sortable field rather than bolted on.
 - `seen` table is cheap insurance for v2 "unseen surfaces sooner" — start writing to it early even if unused.

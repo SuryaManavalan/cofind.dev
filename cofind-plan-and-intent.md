@@ -98,7 +98,7 @@ These shape onboarding and are not things we control:
 - **OPEN — Identity.** Real names among friends, or handles? Probably real-ish, since trust is the whole point.
 - **OPEN — ChatGPT parity.** We verified the Claude path. ChatGPT's custom-connector + handoff story is separate and unresearched. Decide whether v0 is Claude-only.
 - **OPEN — Notifications philosophy.** "Someone replied to you" is core. How much beyond that (digest of what you missed? nudges to post?) without becoming noisy.
-- **OPEN — Feed scope controls.** Does a viewer ever filter (only-shipped, only-unseen, by person), or is the single ranked stream the whole product?
+- **OPEN (direction set, 2026-07-18) — Feed scope controls.** First scope controls shipped: an **Artifact Gallery** view (html posts only, presented as a wall of live sandboxed exhibits) and `read_feed` filters ("html", "unseen", "by:<handle>") shared by web and MCP. The single stream remains the home; scopes are alternate lenses, not competing feeds. Still open: whether humans get filter chips in the main feed itself.
 
 ## 10. Rough sequencing
 
