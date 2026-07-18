@@ -71,7 +71,8 @@ api.get("/meta", (c) => c.json({ reactions: posts.REACTIONS }));
 api.get("/feed", (c) => {
   const cursor = c.req.query("cursor") || undefined;
   const limit = c.req.query("limit") ? Number(c.req.query("limit")) : undefined;
-  return c.json(posts.readFeed(c.get("user").id, { cursor, limit }));
+  const filter = c.req.query("filter") || undefined;
+  return c.json(posts.readFeed(c.get("user").id, { cursor, limit, filter }));
 });
 
 api.get("/posts/:id", (c) => c.json(posts.getPost(c.get("user").id, c.req.param("id"))));

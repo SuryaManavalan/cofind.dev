@@ -32,6 +32,7 @@ export interface PostSummary {
   created_at: number;
   reply_count: number;
   reactions: ReactionSummary[];
+  seen_by_me: boolean;
 }
 
 export interface ReplyDto {
@@ -100,6 +101,7 @@ function toSummary(row: PostRow, viewerId: string): PostSummary {
     created_at: row.created_at,
     reply_count: row.reply_count,
     reactions: reactionSummaries("post", row.id, viewerId),
+    seen_by_me: !!db.prepare("SELECT 1 FROM seen WHERE user_id = ? AND post_id = ?").get(viewerId, row.id),
   };
 }
 
@@ -108,28 +110,67 @@ const POST_SELECT = `
          (SELECT COUNT(*) FROM replies r WHERE r.post_id = p.id) AS reply_count
   FROM posts p JOIN users u ON u.id = p.author_id`;
 
+// The `filter` param reserved in the v0 MCP schema, now implemented:
+// "html" (artifact posts), "unseen" (posts the viewer hasn't seen), "by:<handle>".
+function filterClause(filter: string | undefined, viewerId: string): { where: string; params: unknown[] } {
+  if (!filter) return { where: "", params: [] };
+  if (filter === "html") return { where: "p.render_mode = 'html'", params: [] };
+  if (filter === "unseen")
+    return { where: "NOT EXISTS (SELECT 1 FROM seen s WHERE s.user_id = ? AND s.post_id = p.id)", params: [viewerId] };
+  if (filter.startsWith("by:")) return { where: "u.handle = ? COLLATE NOCASE", params: [filter.slice(3)] };
+  throw new ApiError(400, 'filter must be "html", "unseen", or "by:<handle>"');
+}
+
 export function readFeed(
   viewerId: string,
-  opts: { cursor?: string; limit?: number } = {},
+  opts: { cursor?: string; limit?: number; filter?: string } = {},
 ): { posts: PostSummary[]; next_cursor?: string } {
   const limit = Math.min(Math.max(opts.limit ?? 30, 1), 100);
-  let rows: PostRow[];
+  const { where, params } = filterClause(opts.filter, viewerId);
+  const conditions = where ? [where] : [];
+  const queryParams: unknown[] = [...params];
+
   if (opts.cursor) {
     const [sortKeyStr, id] = opts.cursor.split("|");
     const sortKey = Number(sortKeyStr);
     if (!id || Number.isNaN(sortKey)) throw new ApiError(400, "Invalid cursor");
-    rows = db
-      .prepare(`${POST_SELECT} WHERE (p.sort_key < ? OR (p.sort_key = ? AND p.id < ?)) ORDER BY p.sort_key DESC, p.id DESC LIMIT ?`)
-      .all(sortKey, sortKey, id, limit + 1) as PostRow[];
-  } else {
-    rows = db.prepare(`${POST_SELECT} ORDER BY p.sort_key DESC, p.id DESC LIMIT ?`).all(limit + 1) as PostRow[];
+    conditions.push("(p.sort_key < ? OR (p.sort_key = ? AND p.id < ?))");
+    queryParams.push(sortKey, sortKey, id);
   }
+
+  const whereSql = conditions.length ? ` WHERE ${conditions.join(" AND ")}` : "";
+  const rows = db
+    .prepare(`${POST_SELECT}${whereSql} ORDER BY p.sort_key DESC, p.id DESC LIMIT ?`)
+    .all(...queryParams, limit + 1) as PostRow[];
+
   const hasMore = rows.length > limit;
   const page = rows.slice(0, limit);
   const last = page[page.length - 1];
   return {
     posts: page.map((r) => toSummary(r, viewerId)),
     next_cursor: hasMore && last ? `${last.sort_key}|${last.id}` : undefined,
+  };
+}
+
+// Agent briefing (ADR-015): everything your human missed, in one call.
+export function catchUp(viewerId: string): {
+  unseen_count: number;
+  unseen_posts: PostSummary[];
+  note: string;
+} {
+  const unseen = readFeed(viewerId, { filter: "unseen", limit: 20 });
+  const count = (
+    db
+      .prepare("SELECT COUNT(*) AS n FROM posts p WHERE NOT EXISTS (SELECT 1 FROM seen s WHERE s.user_id = ? AND s.post_id = p.id)")
+      .get(viewerId) as { n: number }
+  ).n;
+  return {
+    unseen_count: count,
+    unseen_posts: unseen.posts,
+    note:
+      count === 0
+        ? "Your human is fully caught up on the room."
+        : "Summarize these conversationally for your human — lead with milestones and questions addressed to them.",
   };
 }
 

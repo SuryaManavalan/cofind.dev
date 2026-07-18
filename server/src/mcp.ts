@@ -55,11 +55,25 @@ function buildMcpServer(user: users.User): McpServer {
       inputSchema: {
         cursor: z.string().optional().describe("Pagination cursor from a previous call"),
         limit: z.number().int().min(1).max(100).optional().describe("Max posts to return (default 30)"),
+        filter: z
+          .string()
+          .optional()
+          .describe('Optional filter: "html" (rendered artifact posts), "unseen" (posts your human has not seen), "by:<handle>"'),
       },
     },
-    wrap(user.id, "read_feed", (args: { cursor?: string; limit?: number }) =>
-      posts.readFeed(user.id, { cursor: args.cursor, limit: args.limit }),
+    wrap(user.id, "read_feed", (args: { cursor?: string; limit?: number; filter?: string }) =>
+      posts.readFeed(user.id, { cursor: args.cursor, limit: args.limit, filter: args.filter }),
     ),
+  );
+
+  server.registerTool(
+    "catch_up",
+    {
+      title: "Catch your human up on the room",
+      description: `Brief ${user.display_name} on what they missed in the cofind room: returns every post they haven't seen in the app yet (up to 20, newest first) with authors, reactions, and reply counts. Summarize conversationally — lead with milestones and anything addressed to them.`,
+      inputSchema: {},
+    },
+    wrap(user.id, "catch_up", () => posts.catchUp(user.id)),
   );
 
   server.registerTool(
