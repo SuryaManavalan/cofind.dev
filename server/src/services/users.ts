@@ -11,7 +11,22 @@ export interface User {
   created_at: number;
 }
 
+export interface Member extends User {
+  last_active_at: number | null;
+}
+
 const userColumns = "id, handle, display_name, created_at";
+
+// Presence (plan doc OPEN item, resolved): bump on authed web activity,
+// throttled in-memory so it isn't a write per request.
+const lastBump = new Map<string, number>();
+
+export function touchPresence(userId: string): void {
+  const now = Date.now();
+  if (now - (lastBump.get(userId) ?? 0) < 60_000) return;
+  lastBump.set(userId, now);
+  db.prepare("UPDATE users SET last_active_at = ? WHERE id = ?").run(now, userId);
+}
 
 export function join(inviteCode: string, handle: string, displayName: string, password: string): { user: User; sessionToken: string } {
   if (inviteCode !== INVITE_CODE) throw new ApiError(403, "Invalid invite code");
@@ -110,6 +125,27 @@ export function userFromAccessToken(token: string): User | null {
   return user;
 }
 
-export function listMembers(): User[] {
-  return db.prepare(`SELECT ${userColumns} FROM users ORDER BY created_at ASC`).all() as User[];
+export function listMembers(): Member[] {
+  return db.prepare(`SELECT ${userColumns}, last_active_at FROM users ORDER BY created_at ASC`).all() as Member[];
+}
+
+export interface AgentActivity {
+  id: number;
+  tool: string;
+  ok: boolean;
+  created_at: number;
+  handle: string;
+  display_name: string;
+}
+
+// The MCP audit log surfaced as the room's "agent pulse" (ADR-013).
+export function recentAgentActivity(limit = 25): AgentActivity[] {
+  const rows = db
+    .prepare(
+      `SELECT l.id, l.tool, l.ok, l.created_at, u.handle, u.display_name
+       FROM mcp_log l JOIN users u ON u.id = l.user_id
+       ORDER BY l.id DESC LIMIT ?`,
+    )
+    .all(limit) as (Omit<AgentActivity, "ok"> & { ok: number })[];
+  return rows.map((r) => ({ ...r, ok: !!r.ok }));
 }

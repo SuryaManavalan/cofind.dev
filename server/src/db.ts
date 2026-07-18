@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS seen (
 );
 
 -- Audit trail for MCP tool calls (architecture doc §7: observability).
+-- Doubles as the "agent pulse" feed in the UI (ADR-013).
 CREATE TABLE IF NOT EXISTS mcp_log (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id    TEXT NOT NULL,
@@ -91,3 +92,18 @@ CREATE TABLE IF NOT EXISTS mcp_log (
   created_at INTEGER NOT NULL
 );
 `);
+
+// Additive migrations for existing databases (CREATE TABLE IF NOT EXISTS won't grow columns).
+function addColumn(table: string, ddl: string) {
+  try {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  } catch {
+    // column already exists
+  }
+}
+
+// Provenance: how the content was written — 'web' (by hand) or 'agent' (via MCP). ADR-013.
+addColumn("posts", "via TEXT NOT NULL DEFAULT 'web'");
+addColumn("replies", "via TEXT NOT NULL DEFAULT 'web'");
+// Human presence (plan doc OPEN item, resolved): bumped by authed web activity.
+addColumn("users", "last_active_at INTEGER");

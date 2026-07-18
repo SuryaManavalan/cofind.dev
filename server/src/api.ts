@@ -49,6 +49,7 @@ api.use("*", async (c, next) => {
   const user = token ? users.userFromSession(token) : null;
   if (!user) return c.json({ error: "Not authenticated" }, 401);
   c.set("user", user);
+  users.touchPresence(user.id);
   await next();
 });
 
@@ -62,6 +63,8 @@ api.post("/auth/logout", (c) => {
 api.get("/me", (c) => c.json({ user: c.get("user") }));
 
 api.get("/members", (c) => c.json({ members: users.listMembers() }));
+
+api.get("/activity", (c) => c.json({ activity: users.recentAgentActivity() }));
 
 api.get("/meta", (c) => c.json({ reactions: posts.REACTIONS }));
 

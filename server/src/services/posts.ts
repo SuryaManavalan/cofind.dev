@@ -21,11 +21,14 @@ export interface ReactionSummary {
   reacted_by_me: boolean;
 }
 
+export type Via = "web" | "agent";
+
 export interface PostSummary {
   id: string;
   author: Author;
   body: string;
   render_mode: RenderMode;
+  via: Via;
   created_at: number;
   reply_count: number;
   reactions: ReactionSummary[];
@@ -37,6 +40,7 @@ export interface ReplyDto {
   author: Author;
   body: string;
   render_mode: RenderMode;
+  via: Via;
   created_at: number;
   reactions: ReactionSummary[];
 }
@@ -80,6 +84,7 @@ interface PostRow {
   display_name: string;
   body: string;
   render_mode: RenderMode;
+  via: Via;
   created_at: number;
   sort_key: number;
   reply_count: number;
@@ -91,6 +96,7 @@ function toSummary(row: PostRow, viewerId: string): PostSummary {
     author: { id: row.author_id, handle: row.handle, display_name: row.display_name },
     body: row.body,
     render_mode: row.render_mode,
+    via: row.via,
     created_at: row.created_at,
     reply_count: row.reply_count,
     reactions: reactionSummaries("post", row.id, viewerId),
@@ -98,7 +104,7 @@ function toSummary(row: PostRow, viewerId: string): PostSummary {
 }
 
 const POST_SELECT = `
-  SELECT p.id, p.author_id, u.handle, u.display_name, p.body, p.render_mode, p.created_at, p.sort_key,
+  SELECT p.id, p.author_id, u.handle, u.display_name, p.body, p.render_mode, p.via, p.created_at, p.sort_key,
          (SELECT COUNT(*) FROM replies r WHERE r.post_id = p.id) AS reply_count
   FROM posts p JOIN users u ON u.id = p.author_id`;
 
@@ -132,7 +138,7 @@ export function getPost(viewerId: string, postId: string): { post: PostSummary; 
   if (!row) throw new ApiError(404, "Post not found");
   const replyRows = db
     .prepare(
-      `SELECT r.id, r.post_id, r.author_id, u.handle, u.display_name, r.body, r.render_mode, r.created_at
+      `SELECT r.id, r.post_id, r.author_id, u.handle, u.display_name, r.body, r.render_mode, r.via, r.created_at
        FROM replies r JOIN users u ON u.id = r.author_id WHERE r.post_id = ? ORDER BY r.created_at ASC`,
     )
     .all(postId) as (Omit<ReplyDto, "author" | "reactions"> & { author_id: string; handle: string; display_name: string })[];
@@ -144,6 +150,7 @@ export function getPost(viewerId: string, postId: string): { post: PostSummary; 
       author: { id: r.author_id, handle: r.handle, display_name: r.display_name },
       body: r.body,
       render_mode: r.render_mode,
+      via: r.via,
       created_at: r.created_at,
       reactions: reactionSummaries("reply", r.id, viewerId),
     })),
@@ -155,6 +162,7 @@ export function createPost(
   body: string,
   renderMode: string,
   idempotencyKey?: string,
+  via: Via = "web",
 ): { post_id: string } {
   validateBody(body);
   validateRenderMode(renderMode);
@@ -171,8 +179,8 @@ export function createPost(
   const now = Date.now();
   // sort_key = created_at for v0 reverse-chron (ADR-002); v1 engagement bump recomputes this field.
   db.prepare(
-    "INSERT INTO posts (id, author_id, body, render_mode, created_at, sort_key, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  ).run(id, authorId, body, renderMode, now, now, idempotencyKey ?? null);
+    "INSERT INTO posts (id, author_id, body, render_mode, via, created_at, sort_key, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(id, authorId, body, renderMode, via, now, now, idempotencyKey ?? null);
   return { post_id: id };
 }
 
@@ -182,6 +190,7 @@ export function createReply(
   body: string,
   renderMode: string = "markdown",
   idempotencyKey?: string,
+  via: Via = "web",
 ): { reply_id: string } {
   validateBody(body);
   validateRenderMode(renderMode);
@@ -198,8 +207,8 @@ export function createReply(
   checkWriteRate(authorId);
   const id = newId("r");
   db.prepare(
-    "INSERT INTO replies (id, post_id, author_id, body, render_mode, created_at, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  ).run(id, postId, authorId, body, renderMode, Date.now(), idempotencyKey ?? null);
+    "INSERT INTO replies (id, post_id, author_id, body, render_mode, via, created_at, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(id, postId, authorId, body, renderMode, via, Date.now(), idempotencyKey ?? null);
   return { reply_id: id };
 }
 

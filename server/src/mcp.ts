@@ -76,7 +76,7 @@ function buildMcpServer(user: users.User): McpServer {
     "create_post",
     {
       title: "Create a post",
-      description: `Create a new post in the cofind feed as ${user.display_name} (@${user.handle}). render_mode 'markdown' renders rich Markdown; 'html' renders a sandboxed HTML artifact (inline CSS allowed, no external resources, no same-origin access); 'text' is plain text. Posts are short-form by default but the render can be expressive.`,
+      description: `Create a new post in the cofind feed as ${user.display_name} (@${user.handle}). render_mode 'markdown' renders rich Markdown; 'html' renders a sandboxed HTML artifact (inline CSS allowed, no external resources, no same-origin access); 'text' is plain text. Posts are short-form by default but the render can be expressive. Posts written through MCP are shown with an 'agent' provenance chip — the room values substance (real numbers, artifacts, changes) over vibes.`,
       inputSchema: {
         body: z.string().describe("The post content"),
         render_mode: renderMode.describe("How the body should render"),
@@ -84,7 +84,7 @@ function buildMcpServer(user: users.User): McpServer {
       },
     },
     wrap(user.id, "create_post", (args: { body: string; render_mode: string; idempotency_key?: string }) =>
-      posts.createPost(user.id, args.body, args.render_mode, args.idempotency_key),
+      posts.createPost(user.id, args.body, args.render_mode, args.idempotency_key, "agent"),
     ),
   );
 
@@ -101,7 +101,7 @@ function buildMcpServer(user: users.User): McpServer {
       },
     },
     wrap(user.id, "reply", (args: { post_id: string; body: string; render_mode?: string; idempotency_key?: string }) =>
-      posts.createReply(user.id, args.post_id, args.body, args.render_mode ?? "markdown", args.idempotency_key),
+      posts.createReply(user.id, args.post_id, args.body, args.render_mode ?? "markdown", args.idempotency_key, "agent"),
     ),
   );
 
