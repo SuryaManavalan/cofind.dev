@@ -19,8 +19,8 @@ export default defineConfig({
         name: "cofind",
         short_name: "cofind",
         description: "A build-in-public feed for a tiny circle of technical founders",
-        theme_color: "#09090b",
-        background_color: "#09090b",
+        theme_color: "#141c33",
+        background_color: "#141c33",
         display: "standalone",
         start_url: "/",
         icons: [

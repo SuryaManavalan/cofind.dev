@@ -3,55 +3,58 @@
 @import "tw-animate-css";
 
 /*
- * shadcn/ui zinc theme (Tailwind v4, CSS-variable tokens).
- * Light/dark follow the OS via prefers-color-scheme — swap any value here
- * to retheme the whole app.
+ * "Night Winter" theme (colormagic.app dark palettes), chosen for the ICP:
+ * technical founders, Linear/Vercel-adjacent taste. The five palette anchors —
+ * Big Stone #141C33 · San Juan #2F456F · Wedgewood #5374AC · Polo Blue #8BAFD0
+ * · Black Squeeze #EFF5FA — drive every token; intermediates are color-mix
+ * blends of the anchors so the whole app stays inside the palette.
+ * Light/dark follow the OS via prefers-color-scheme.
  */
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
+  --background: #eff5fa;
+  --foreground: #141c33;
+  --card: #ffffff;
+  --card-foreground: #141c33;
+  --popover: #ffffff;
+  --popover-foreground: #141c33;
+  --primary: #141c33;
+  --primary-foreground: #eff5fa;
+  --secondary: color-mix(in srgb, #8bafd0 18%, white);
+  --secondary-foreground: #141c33;
+  --muted: color-mix(in srgb, #8bafd0 18%, white);
+  --muted-foreground: color-mix(in srgb, #2f456f 78%, #8bafd0);
+  --accent: color-mix(in srgb, #8bafd0 22%, white);
+  --accent-foreground: #141c33;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
-  --brand: oklch(0.541 0.281 293.009);
+  --border: color-mix(in srgb, #8bafd0 38%, white);
+  --input: color-mix(in srgb, #8bafd0 45%, white);
+  --ring: #5374ac;
+  --brand: #5374ac;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: oklch(0.141 0.005 285.823);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.18 0.005 285.885);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.21 0.006 285.885);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.92 0.004 286.32);
-    --primary-foreground: oklch(0.21 0.006 285.885);
-    --secondary: oklch(0.274 0.006 286.033);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.274 0.006 286.033);
-    --muted-foreground: oklch(0.705 0.015 286.067);
-    --accent: oklch(0.274 0.006 286.033);
-    --accent-foreground: oklch(0.985 0 0);
+    --background: #141c33;
+    --foreground: #eff5fa;
+    --card: color-mix(in srgb, #141c33 82%, #2f456f);
+    --card-foreground: #eff5fa;
+    --popover: color-mix(in srgb, #141c33 68%, #2f456f);
+    --popover-foreground: #eff5fa;
+    --primary: #eff5fa;
+    --primary-foreground: #141c33;
+    --secondary: color-mix(in srgb, #141c33 45%, #2f456f);
+    --secondary-foreground: #eff5fa;
+    --muted: color-mix(in srgb, #141c33 55%, #2f456f);
+    --muted-foreground: color-mix(in srgb, #8bafd0 72%, #5374ac);
+    --accent: color-mix(in srgb, #141c33 45%, #2f456f);
+    --accent-foreground: #eff5fa;
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.552 0.016 285.938);
-    --brand: oklch(0.702 0.183 293.541);
+    --border: color-mix(in srgb, #5374ac 32%, transparent);
+    --input: color-mix(in srgb, #5374ac 42%, transparent);
+    --ring: #5374ac;
+    --brand: #8bafd0;
   }
 }
 
