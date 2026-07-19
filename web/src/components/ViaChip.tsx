@@ -11,8 +11,8 @@ export default function ViaChip({ via, compact = false }: { via: Via; compact?: 
     <span
       title="Written by their agent, via MCP"
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-brand/30 bg-brand/10 text-brand",
-        compact ? "p-0.5" : "px-1.5 py-0.5 text-[10px] font-medium",
+        "inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-full border border-brand/25 bg-brand/10 text-brand",
+        compact ? "w-5 justify-center" : "px-1.5 text-[10px] font-medium",
       )}
     >
       <Bot className={compact ? "size-3" : "size-3"} />

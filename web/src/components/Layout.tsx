@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, Bot, Flame, GitBranch, Home, LayoutGrid, Settings as SettingsIcon, Sparkles } from "lucide-react";
+import { Activity, Bot, Flame, GitBranch, Home, LayoutGrid, Menu, Settings as SettingsIcon, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { User } from "../types";
 import { useFeed } from "../feed-context";
@@ -191,6 +191,77 @@ function FeedHeader() {
   );
 }
 
+// Mobile drawer: the phone's door to everything the desktop sidebar + rail hold.
+function MobileDrawer({
+  open,
+  onClose,
+  onNavigate,
+  openSettings,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onNavigate: (path: string) => void;
+  openSettings: () => void;
+}) {
+  const path = useLocation().pathname;
+  if (!open) return null;
+  const items = [
+    { label: "Feed", icon: <Home />, to: "/" },
+    { label: "Tracks", icon: <GitBranch />, to: "/tracks" },
+    { label: "Gallery", icon: <LayoutGrid />, to: "/gallery" },
+    { label: "Constellation", icon: <Sparkles />, to: "/graph" },
+  ];
+  return (
+    <div className="fixed inset-0 z-40 md:hidden" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 animate-in fade-in-0" />
+      <div
+        className="absolute inset-y-0 left-0 flex w-80 max-w-[85vw] flex-col overflow-y-auto border-r bg-background shadow-2xl animate-in slide-in-from-left duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <img src="/icon.svg" alt="" className="size-7 rounded-lg" />
+            <span className="font-semibold tracking-tight">Cofind</span>
+          </div>
+          <Button variant="ghost" size="icon-sm" onClick={onClose}>
+            <X />
+          </Button>
+        </div>
+        <nav className="space-y-1 p-3">
+          {items.map((it) => (
+            <Button
+              key={it.to}
+              variant={path === it.to ? "secondary" : "ghost"}
+              className={cn("w-full justify-start", path !== it.to && "text-muted-foreground")}
+              size="sm"
+              onClick={() => {
+                onNavigate(it.to);
+                onClose();
+              }}
+            >
+              {it.icon} {it.label}
+            </Button>
+          ))}
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-muted-foreground"
+            size="sm"
+            onClick={() => {
+              openSettings();
+              onClose();
+            }}
+          >
+            <Bot /> Connect your agent
+          </Button>
+        </nav>
+        <div className="border-t">
+          <MembersRail />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Layout({
   user,
   onLogout,
@@ -203,6 +274,7 @@ export default function Layout({
   children: React.ReactNode;
 }) {
   const [showSettings, setShowSettings] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
   const path = useLocation().pathname;
   const onGallery = path === "/gallery";
@@ -292,8 +364,11 @@ export default function Layout({
       {/* Feed column */}
       <div className="flex w-full min-w-0 max-w-2xl flex-col md:flex-1 md:border-r">
           {/* Mobile top bar */}
-          <header className="flex shrink-0 items-center justify-between border-b px-4 py-2.5 md:hidden">
-            <div className="flex items-center gap-2">
+          <header className="flex shrink-0 items-center justify-between border-b px-3 py-2.5 md:hidden">
+            <div className="flex items-center gap-1.5">
+              <Button variant="ghost" size="icon-sm" onClick={() => setDrawerOpen(true)} title="Menu">
+                <Menu />
+              </Button>
               <img src="/icon.svg" alt="" className="size-7 rounded-lg" />
               <span className="font-semibold tracking-tight">Cofind</span>
               {IS_DEV_ENV && (
@@ -327,6 +402,7 @@ export default function Layout({
         </aside>
       )}
 
+      <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onNavigate={navigate} openSettings={() => setShowSettings(true)} />
       <Settings user={user} open={showSettings} onOpenChange={setShowSettings} onLogout={onLogout} />
       <CommandPalette openSettings={() => setShowSettings(true)} onLogout={onLogout} />
     </div>
