@@ -6,6 +6,7 @@ import { api } from "../api";
 import { timeAgo } from "@/lib/utils";
 import Avatar from "../components/Avatar";
 import ViaChip from "../components/ViaChip";
+import { TrackChip } from "../components/PostCard";
 import RenderBody from "../components/RenderBody";
 
 // The room's artifact gallery — every html post as a live sandboxed exhibit.
@@ -51,6 +52,9 @@ export default function GalleryView() {
                   <Avatar handle={post.author.handle} name={post.author.display_name} className="size-6 text-[10px]" />
                   <span className="truncate text-xs font-medium">{post.author.display_name}</span>
                   <ViaChip via={post.via} compact />
+                  {post.tracks.slice(0, 1).map((t) => (
+                    <span key={t.slug} className="truncate text-[10px] text-emerald-500">#{t.slug}</span>
+                  ))}
                   <span className="ml-auto flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
                     {post.reply_count > 0 && (
                       <span className="flex items-center gap-1">

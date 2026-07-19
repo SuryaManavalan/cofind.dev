@@ -165,6 +165,8 @@ CREATE INDEX IF NOT EXISTS idx_post_tracks_track ON post_tracks (track_id, creat
 
 // Personal tracks (ADR-021 amendment): owner_id set => only the owner's posts attach.
 addColumn("tracks", "owner_id TEXT REFERENCES users(id)");
+// Shipping ritual (ADR-022): a shipped track is a closed story with a trophy.
+addColumn("tracks", "shipped_at INTEGER");
 
 // Profiles (ADR-021): a line about you and a link, editable in Settings.
 addColumn("users", "bio TEXT");

@@ -48,9 +48,24 @@ export interface TrackSummary {
   owner: Author | null;
   description: string | null;
   created_at: number;
+  shipped_at: number | null;
   post_count: number;
+  recent_count: number;
   last_post_at: number | null;
   contributors: Author[];
+}
+
+export interface RelatedTrack {
+  slug: string;
+  title: string;
+  shared_posts: number;
+  shared_contributors: number;
+}
+
+export interface GraphData {
+  tracks: (TrackSummary & { node: string })[];
+  people: { node: string; id: string; handle: string; display_name: string; created_at: number; post_count: number }[];
+  edges: { source: string; target: string; kind: "contributes" | "crossing" | "interacts"; weight: number; first_at: number }[];
 }
 
 export interface Reply {

@@ -78,8 +78,11 @@ api.get("/feed", (c) => {
 api.get("/posts/:id", (c) => c.json(posts.getPost(c.get("user").id, c.req.param("id"))));
 
 api.post("/posts", async (c) => {
-  const { body, render_mode, idempotency_key } = await c.req.json();
-  return c.json(posts.createPost(c.get("user").id, body ?? "", render_mode ?? "text", idempotency_key), 201);
+  const { body, render_mode, idempotency_key, tracks } = await c.req.json();
+  return c.json(
+    posts.createPost(c.get("user").id, body ?? "", render_mode ?? "text", idempotency_key, "web", Array.isArray(tracks) ? tracks : []),
+    201,
+  );
 });
 
 api.patch("/posts/:id", async (c) => {
@@ -115,6 +118,13 @@ api.patch("/tracks/:slug", async (c) => {
 api.patch("/tracks/:ns/:slug", async (c) => {
   const { title, description } = await c.req.json();
   return c.json({ track: posts.updateTrack(`${c.req.param("ns")}/${c.req.param("slug")}`, { title, description }) });
+});
+
+api.get("/graph", (c) => c.json(posts.graphData()));
+
+api.post("/tracks-ship", async (c) => {
+  const { slug, ship } = await c.req.json();
+  return c.json({ track: posts.shipTrack(c.get("user").id, slug ?? "", ship !== false) });
 });
 
 api.patch("/profile", async (c) => {

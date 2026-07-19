@@ -173,6 +173,7 @@ export function catchUp(viewerId: string): {
   unseen_count: number;
   unseen_posts: PostSummary[];
   asks: Ask[];
+  tracks_moved: { slug: string; title: string; new_stops: number }[];
   note: string;
 } {
   const unseen = readFeed(viewerId, { filter: "unseen", limit: 20 });
@@ -182,10 +183,19 @@ export function catchUp(viewerId: string): {
       .get(viewerId) as { n: number }
   ).n;
   const asks = asksFor(viewerId);
+  const tracksMoved = db
+    .prepare(
+      `SELECT t.slug, t.title, COUNT(*) AS new_stops FROM post_tracks pt
+       JOIN posts p ON p.id = pt.post_id JOIN tracks t ON t.id = pt.track_id
+       WHERE NOT EXISTS (SELECT 1 FROM seen s WHERE s.user_id = ? AND s.post_id = p.id)
+       GROUP BY pt.track_id ORDER BY MAX(p.created_at) DESC LIMIT 10`,
+    )
+    .all(viewerId) as { slug: string; title: string; new_stops: number }[];
   return {
     unseen_count: count,
     unseen_posts: unseen.posts,
     asks,
+    tracks_moved: tracksMoved,
     note:
       (count === 0 ? "Your human is fully caught up on the room. " : "Summarize these conversationally for your human — lead with milestones and questions addressed to them. ") +
       (asks.length > 0
@@ -426,14 +436,18 @@ export function normalizeTrackSugar(body: string, authorId: string, renderMode: 
 // attach — everyone else's usage renders as a reference, never an injection.
 // Returns null when attachment isn't allowed (or the namespace is someone else's).
 function ensureTrack(slug: string, userId: string, strict: boolean): string | null {
-  const existing = db.prepare("SELECT id, owner_id FROM tracks WHERE slug = ?").get(slug) as
-    | { id: string; owner_id: string | null }
+  const existing = db.prepare("SELECT id, owner_id, shipped_at FROM tracks WHERE slug = ?").get(slug) as
+    | { id: string; owner_id: string | null; shipped_at: number | null }
     | undefined;
   const ns = slug.includes("/") ? slug.split("/")[0]! : null;
 
   if (existing) {
     if (existing.owner_id && existing.owner_id !== userId) {
       if (strict) throw new ApiError(403, `#${slug} is @${ns}'s personal track — only their posts can join it`);
+      return null;
+    }
+    if (existing.shipped_at) {
+      if (strict) throw new ApiError(409, `#${slug} is shipped — its story is closed. Unship it first to add more stops.`);
       return null;
     }
     return existing.id;
@@ -499,20 +513,24 @@ export interface TrackSummary {
   description: string | null;
   created_at: number;
   owner: Author | null;
+  shipped_at: number | null;
   post_count: number;
+  recent_count: number;
   last_post_at: number | null;
   contributors: Author[];
 }
 
-function trackSummary(row: { id: string; slug: string; title: string; description: string | null; created_at: number; owner_id?: string | null }): TrackSummary {
+function trackSummary(row: { id: string; slug: string; title: string; description: string | null; created_at: number; owner_id?: string | null; shipped_at?: number | null }): TrackSummary {
   const owner = row.owner_id
     ? (db.prepare("SELECT id, handle, display_name FROM users WHERE id = ?").get(row.owner_id) as Author)
     : null;
   const stats = db
     .prepare(
-      `SELECT COUNT(*) AS n, MAX(p.created_at) AS last FROM post_tracks pt JOIN posts p ON p.id = pt.post_id WHERE pt.track_id = ?`,
+      `SELECT COUNT(*) AS n, MAX(p.created_at) AS last,
+              SUM(CASE WHEN p.created_at > ? THEN 1 ELSE 0 END) AS recent
+       FROM post_tracks pt JOIN posts p ON p.id = pt.post_id WHERE pt.track_id = ?`,
     )
-    .get(row.id) as { n: number; last: number | null };
+    .get(Date.now() - 7 * 24 * 60 * 60 * 1000, row.id) as { n: number; last: number | null; recent: number | null };
   const contributors = db
     .prepare(
       `SELECT DISTINCT u.id, u.handle, u.display_name FROM post_tracks pt
@@ -521,28 +539,131 @@ function trackSummary(row: { id: string; slug: string; title: string; descriptio
     )
     .all(row.id) as Author[];
   const { owner_id: _o, ...rest } = row;
-  return { ...rest, owner, post_count: stats.n, last_post_at: stats.last, contributors };
+  return {
+    ...rest,
+    owner,
+    shipped_at: row.shipped_at ?? null,
+    post_count: stats.n,
+    recent_count: stats.recent ?? 0,
+    last_post_at: stats.last,
+    contributors,
+  };
 }
 
 export function listTracks(): TrackSummary[] {
-  const rows = db.prepare("SELECT id, slug, title, description, owner_id, created_at FROM tracks").all() as Parameters<typeof trackSummary>[0][];
+  const rows = db.prepare("SELECT id, slug, title, description, owner_id, shipped_at, created_at FROM tracks").all() as Parameters<typeof trackSummary>[0][];
   return rows.map(trackSummary).sort((a, b) => (b.last_post_at ?? 0) - (a.last_post_at ?? 0));
 }
 
 // A track reads chronologically — it's the story of the thing being built.
-export function getTrack(viewerId: string, slug: string): { track: TrackSummary; posts: PostSummary[] } {
-  const row = db.prepare("SELECT id, slug, title, description, owner_id, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
+export function getTrack(viewerId: string, slug: string): { track: TrackSummary; posts: PostSummary[]; related: RelatedTrack[] } {
+  const row = db.prepare("SELECT id, slug, title, description, owner_id, shipped_at, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
     | Parameters<typeof trackSummary>[0]
     | undefined;
   if (!row) throw new ApiError(404, "Track not found");
   const postRows = db
     .prepare(`${POST_SELECT} JOIN post_tracks pt ON pt.post_id = p.id WHERE pt.track_id = ? ORDER BY p.created_at ASC`)
     .all(row.id) as PostRow[];
-  return { track: trackSummary(row), posts: postRows.map((r) => toSummary(r, viewerId)) };
+  return { track: trackSummary(row), posts: postRows.map((r) => toSummary(r, viewerId)), related: relatedTracks(row.id) };
+}
+
+export interface RelatedTrack {
+  slug: string;
+  title: string;
+  shared_posts: number;
+  shared_contributors: number;
+}
+
+// Crossings: tracks that share posts (strong tie) or contributors (weak tie).
+function relatedTracks(trackId: string): RelatedTrack[] {
+  const byPost = db
+    .prepare(
+      `SELECT t.slug, t.title, COUNT(*) AS n FROM post_tracks a
+       JOIN post_tracks b ON b.post_id = a.post_id AND b.track_id != a.track_id
+       JOIN tracks t ON t.id = b.track_id WHERE a.track_id = ? GROUP BY b.track_id`,
+    )
+    .all(trackId) as { slug: string; title: string; n: number }[];
+  const byPerson = db
+    .prepare(
+      `SELECT t.slug, t.title, COUNT(DISTINCT p2.author_id) AS n
+       FROM post_tracks a JOIN posts p1 ON p1.id = a.post_id
+       JOIN posts p2 ON p2.author_id = p1.author_id
+       JOIN post_tracks b ON b.post_id = p2.id AND b.track_id != a.track_id
+       JOIN tracks t ON t.id = b.track_id WHERE a.track_id = ? GROUP BY b.track_id`,
+    )
+    .all(trackId) as { slug: string; title: string; n: number }[];
+  const merged = new Map<string, RelatedTrack>();
+  for (const r of byPerson) merged.set(r.slug, { slug: r.slug, title: r.title, shared_posts: 0, shared_contributors: r.n });
+  for (const r of byPost) {
+    const e = merged.get(r.slug) ?? { slug: r.slug, title: r.title, shared_posts: 0, shared_contributors: 0 };
+    e.shared_posts = r.n;
+    merged.set(r.slug, e);
+  }
+  return [...merged.values()].sort((a, b) => b.shared_posts - a.shared_posts || b.shared_contributors - a.shared_contributors).slice(0, 6);
+}
+
+// Shipping ritual (ADR-022): close the story. Any contributor may ship a
+// communal track; personal tracks ship only by their owner.
+export function shipTrack(userId: string, slug: string, ship: boolean): TrackSummary {
+  const row = db.prepare("SELECT id, slug, title, description, owner_id, shipped_at, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
+    | (Parameters<typeof trackSummary>[0] & { id: string; owner_id: string | null })
+    | undefined;
+  if (!row) throw new ApiError(404, "Track not found");
+  if (row.owner_id && row.owner_id !== userId) throw new ApiError(403, "Only the owner can ship a personal track");
+  if (!row.owner_id) {
+    const contributed = db
+      .prepare("SELECT 1 FROM post_tracks pt JOIN posts p ON p.id = pt.post_id WHERE pt.track_id = ? AND p.author_id = ? LIMIT 1")
+      .get(row.id, userId);
+    if (!contributed) throw new ApiError(403, "Only contributors can ship a communal track");
+  }
+  const shippedAt = ship ? Date.now() : null;
+  db.prepare("UPDATE tracks SET shipped_at = ? WHERE id = ?").run(shippedAt, row.id);
+  return trackSummary({ ...row, shipped_at: shippedAt });
+}
+
+// The room as a graph: tracks + people as nodes; edges from contribution,
+// shared posts, and person-to-person interaction (replies + mentions).
+export function graphData(): {
+  tracks: (TrackSummary & { node: string })[];
+  people: { node: string; id: string; handle: string; display_name: string; created_at: number; post_count: number }[];
+  edges: { source: string; target: string; kind: "contributes" | "crossing" | "interacts"; weight: number; first_at: number }[];
+} {
+  const tracks = listTracks().map((t) => ({ ...t, node: `t:${t.id}` }));
+  const people = (
+    db.prepare("SELECT id, handle, display_name, created_at FROM users").all() as { id: string; handle: string; display_name: string; created_at: number }[]
+  ).map((u) => ({
+    node: `u:${u.id}`,
+    ...u,
+    post_count: (db.prepare("SELECT COUNT(*) AS n FROM posts WHERE author_id = ?").get(u.id) as { n: number }).n,
+  }));
+  const edges: { source: string; target: string; kind: "contributes" | "crossing" | "interacts"; weight: number; first_at: number }[] = [];
+  const contrib = db
+    .prepare(
+      `SELECT pt.track_id, p.author_id, COUNT(*) AS n, MIN(p.created_at) AS first_at
+       FROM post_tracks pt JOIN posts p ON p.id = pt.post_id GROUP BY pt.track_id, p.author_id`,
+    )
+    .all() as { track_id: string; author_id: string; n: number; first_at: number }[];
+  for (const c of contrib) edges.push({ source: `u:${c.author_id}`, target: `t:${c.track_id}`, kind: "contributes", weight: c.n, first_at: c.first_at });
+  const crossings = db
+    .prepare(
+      `SELECT a.track_id AS ta, b.track_id AS tb, COUNT(*) AS n, MIN(p.created_at) AS first_at
+       FROM post_tracks a JOIN post_tracks b ON b.post_id = a.post_id AND b.track_id > a.track_id
+       JOIN posts p ON p.id = a.post_id GROUP BY a.track_id, b.track_id`,
+    )
+    .all() as { ta: string; tb: string; n: number; first_at: number }[];
+  for (const c of crossings) edges.push({ source: `t:${c.ta}`, target: `t:${c.tb}`, kind: "crossing", weight: c.n, first_at: c.first_at });
+  const interacts = db
+    .prepare(
+      `SELECT r.author_id AS a, p.author_id AS b, COUNT(*) AS n, MIN(r.created_at) AS first_at
+       FROM replies r JOIN posts p ON p.id = r.post_id WHERE r.author_id != p.author_id GROUP BY r.author_id, p.author_id`,
+    )
+    .all() as { a: string; b: string; n: number; first_at: number }[];
+  for (const i of interacts) edges.push({ source: `u:${i.a}`, target: `u:${i.b}`, kind: "interacts", weight: i.n, first_at: i.first_at });
+  return { tracks, people, edges };
 }
 
 export function updateTrack(slug: string, fields: { title?: string; description?: string }): TrackSummary {
-  const row = db.prepare("SELECT id, slug, title, description, owner_id, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
+  const row = db.prepare("SELECT id, slug, title, description, owner_id, shipped_at, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
     | Parameters<typeof trackSummary>[0]
     | undefined;
   if (!row) throw new ApiError(404, "Track not found");

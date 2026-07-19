@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Command } from "cmdk";
-import { Bot, Copy, GitBranch, Home, KeyRound, LayoutGrid, LogOut, MessageSquare, PenLine, Search } from "lucide-react";
+import { Bot, Copy, GitBranch, Home, KeyRound, LayoutGrid, LogOut, MessageSquare, PenLine, Search, Sparkles } from "lucide-react";
 import { useFeed } from "../feed-context";
 
 // ⌘K — table stakes for founder tools (Linear/Raycast idiom, per research theme C/D).
@@ -14,7 +14,7 @@ export default function CommandPalette({
 }) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { posts } = useFeed();
+  const { posts, tracks } = useFeed();
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -69,6 +69,9 @@ export default function CommandPalette({
             <Item onSelect={() => run(() => navigate("/tracks"))}>
               <GitBranch /> Tracks
             </Item>
+            <Item onSelect={() => run(() => navigate("/graph"))}>
+              <Sparkles /> Constellation
+            </Item>
             <Item onSelect={() => run(openSettings)}>
               <KeyRound /> Settings & agent tokens
             </Item>
@@ -82,6 +85,20 @@ export default function CommandPalette({
               <LogOut /> Log out
             </Item>
           </Command.Group>
+
+          {tracks.length > 0 && (
+            <Command.Group heading="Tracks">
+              {tracks.slice(0, 10).map((t) => (
+                <Item key={t.id} onSelect={() => run(() => navigate(`/t/${t.slug}`))} value={`#${t.slug} ${t.title}`}>
+                  <GitBranch />
+                  <span className="truncate">
+                    <span className="font-medium text-emerald-500">#{t.slug}</span>{" "}
+                    <span className="text-muted-foreground">{t.post_count} stops</span>
+                  </span>
+                </Item>
+              ))}
+            </Command.Group>
+          )}
 
           {posts.length > 0 && (
             <Command.Group heading="Jump to post">

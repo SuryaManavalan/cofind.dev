@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, Bot, GitBranch, Home, LayoutGrid, Settings as SettingsIcon } from "lucide-react";
+import { Activity, Bot, Flame, GitBranch, Home, LayoutGrid, Settings as SettingsIcon, Sparkles } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { User } from "../types";
 import { useFeed } from "../feed-context";
@@ -82,6 +82,8 @@ function MembersRail() {
         </ul>
       </div>
 
+      <MovingNow />
+
       <div>
         <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           <Activity className="size-3.5 text-brand" /> Agent pulse
@@ -99,6 +101,37 @@ function MembersRail() {
           client at <code className="rounded bg-muted px-1 py-0.5">/mcp</code>.
         </p>
       </div>
+    </div>
+  );
+}
+
+// Tracks with fresh stops — the room's heartbeat per-story, not per-person.
+function MovingNow() {
+  const { tracks } = useFeed();
+  const navigate = useNavigate();
+  const moving = tracks.filter((t) => t.last_post_at && !t.shipped_at).slice(0, 4);
+  if (moving.length === 0) return null;
+  return (
+    <div>
+      <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <GitBranch className="size-3.5 text-emerald-500" /> Moving now
+      </h2>
+      <ul className="space-y-1.5">
+        {moving.map((t) => (
+          <li key={t.id}>
+            <button
+              onClick={() => navigate(`/t/${t.slug}`)}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
+            >
+              <span className="truncate font-medium text-emerald-500">#{t.slug}</span>
+              {t.recent_count >= 3 && <Flame className="size-3 shrink-0 text-orange-500" />}
+              <span className="ml-auto shrink-0 text-muted-foreground">
+                {t.post_count} · {t.last_post_at ? timeAgo(t.last_post_at) : ""}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -132,7 +165,7 @@ function FeedHeader() {
   const online = members.filter((m) => isOnline(m.last_active_at));
   const lastAgent = activity[0];
   const path = useLocation().pathname;
-  const title = path === "/gallery" ? "Gallery" : path === "/tracks" ? "Tracks" : "Feed";
+  const title = path === "/gallery" ? "Gallery" : path === "/tracks" ? "Tracks" : path === "/graph" ? "Constellation" : "Feed";
   return (
     <header className="hidden shrink-0 items-center justify-between border-b px-6 py-2.5 md:flex">
       <div className="flex items-center gap-2">
@@ -174,7 +207,8 @@ export default function Layout({
   const path = useLocation().pathname;
   const onGallery = path === "/gallery";
   const onTracks = path === "/tracks";
-  const onFeed = !onGallery && !onTracks;
+  const onGraph = path === "/graph";
+  const onFeed = !onGallery && !onTracks && !onGraph;
 
   return (
     <div className="flex h-dvh w-full justify-center">
@@ -219,6 +253,14 @@ export default function Layout({
             onClick={() => navigate("/gallery")}
           >
             <LayoutGrid /> Gallery
+          </Button>
+          <Button
+            variant={onGraph ? "secondary" : "ghost"}
+            className={cn("w-full justify-start", !onGraph && "text-muted-foreground")}
+            size="sm"
+            onClick={() => navigate("/graph")}
+          >
+            <Sparkles /> Constellation
           </Button>
           <Button variant="ghost" className="w-full justify-start text-muted-foreground" size="sm" onClick={() => setShowSettings(true)}>
             <Bot /> Connect your agent
