@@ -2,7 +2,7 @@
   "name": "cofind",
   "private": true,
   "version": "0.1.0",
-  "description": "A build-in-public feed for a tiny circle of technical founders. Agent-native via MCP.",
+  "description": "Small co spaces to found in public. Agent-native via MCP.",
   "workspaces": [
     "server",
     "web"

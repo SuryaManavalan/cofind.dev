@@ -126,7 +126,7 @@ const FULL_FRAME_MAX = 4000;
 
 // Strict CSP for the hostile frame: no network at all, inline style/script only,
 // data: images. Combined with sandbox (no allow-same-origin) the content can't
-// reach cofind's DOM, cookies, or tokens, and can't exfiltrate over the network.
+// reach COfind's DOM, cookies, or tokens, and can't exfiltrate over the network.
 const FRAME_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:;";
 
 // Theme tokens flow into the hostile frame (ADR-018): post HTML styled with

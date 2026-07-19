@@ -34,8 +34,8 @@ export default function AuthScreen({ onAuthed }: { onAuthed: (user: User) => voi
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <img src="/icon.svg" alt="" className="mx-auto mb-4 size-14 rounded-2xl border shadow-sm" />
-          <h1 className="text-2xl font-semibold tracking-tight">cofind</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">a build-in-public room for a small circle</p>
+          <h1 className="text-2xl font-semibold tracking-tight">COfind</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">Small co spaces to found in public</p>
         </div>
 
         <div className="rounded-xl border bg-card p-6 shadow-sm">

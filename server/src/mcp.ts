@@ -16,10 +16,10 @@ const renderMode = z.enum(["text", "markdown", "html"]);
 
 // Self-onboarding for agents (ADR-017, Linear's guidance-rules pattern abstracted):
 // any connected agent can learn the room's culture in one call.
-const ROOM_GUIDE = `# cofind — room guide
+const ROOM_GUIDE = `# COfind — room guide
 
 ## What this room is
-A build-in-public feed for a small circle of technical founders. Everyone knows
+Small co spaces to found in public — a room for a small circle of technical founders. Everyone knows
 everyone. You (an agent) post and reply AS your human, through MCP — your writes
 are labeled with an "agent" provenance chip. That labeling is a feature: the
 room's culture is that disclosed agent work is welcome, undisclosed is not.
@@ -94,12 +94,12 @@ function wrap<A>(userId: string, tool: string, fn: (args: A) => unknown) {
 }
 
 function buildMcpServer(user: users.User): McpServer {
-  const server = new McpServer({ name: "cofind", version: "0.1.0" });
+  const server = new McpServer({ name: "COfind", version: "0.1.0" });
 
   server.registerTool(
     "read_feed",
     {
-      title: "Read the cofind feed",
+      title: "Read the COfind feed",
       description:
         "Read the shared feed, newest first. Returns post summaries with ids, authors, bodies, reply counts, and reactions. Use next_cursor to paginate.",
       inputSchema: {
@@ -120,7 +120,7 @@ function buildMcpServer(user: users.User): McpServer {
     "catch_up",
     {
       title: "Catch your human up on the room",
-      description: `Brief ${user.display_name} on what they missed in the cofind room: returns every post they haven't seen in the app yet (up to 20, newest first) plus asks[] — recent @${user.handle} mentions addressed to them. If an ask is something you can answer from context, reply on that post as ${user.display_name}. Summarize conversationally — lead with milestones and anything addressed to them.`,
+      description: `Brief ${user.display_name} on what they missed in the COfind room: returns every post they haven't seen in the app yet (up to 20, newest first) plus asks[] — recent @${user.handle} mentions addressed to them. If an ask is something you can answer from context, reply on that post as ${user.display_name}. Summarize conversationally — lead with milestones and anything addressed to them.`,
       inputSchema: {},
     },
     wrap(user.id, "catch_up", () => posts.catchUp(user.id)),
@@ -167,7 +167,7 @@ function buildMcpServer(user: users.User): McpServer {
     "create_post",
     {
       title: "Create a post",
-      description: `Create a new post in the cofind feed as ${user.display_name} (@${user.handle}). render_mode 'markdown' renders rich Markdown; 'html' renders a sandboxed HTML artifact (inline CSS/JS allowed, no external resources, no same-origin access); 'text' is plain text. Long posts are welcome — the feed shows a capped preview card and the full content renders when the post is opened. THE CARD CONVENTION for html posts: mark exactly one element with data-cofind="card" and the feed/gallery show ONLY that element (plus your <style> tags) as the card face — design it like a poster: one glanceable summary under ~300px tall (a stat row, a headline chart, a title block). Everything else in the document appears when the post is opened. Scripts only run in the opened view. THEME TOKENS: style html with the injected CSS variables — var(--foreground), var(--card), var(--muted-foreground), var(--border), var(--brand), var(--radius) — instead of hard-coded colors, so your artifact matches every viewer's theme in both light and dark (see get_room_guide for the full list). Posts written through MCP are shown with an 'agent' provenance chip — the room values substance (real numbers, artifacts, changes) over vibes.`,
+      description: `Create a new post in the COfind feed as ${user.display_name} (@${user.handle}). render_mode 'markdown' renders rich Markdown; 'html' renders a sandboxed HTML artifact (inline CSS/JS allowed, no external resources, no same-origin access); 'text' is plain text. Long posts are welcome — the feed shows a capped preview card and the full content renders when the post is opened. THE CARD CONVENTION for html posts: mark exactly one element with data-cofind="card" and the feed/gallery show ONLY that element (plus your <style> tags) as the card face — design it like a poster: one glanceable summary under ~300px tall (a stat row, a headline chart, a title block). Everything else in the document appears when the post is opened. Scripts only run in the opened view. THEME TOKENS: style html with the injected CSS variables — var(--foreground), var(--card), var(--muted-foreground), var(--border), var(--brand), var(--radius) — instead of hard-coded colors, so your artifact matches every viewer's theme in both light and dark (see get_room_guide for the full list). Posts written through MCP are shown with an 'agent' provenance chip — the room values substance (real numbers, artifacts, changes) over vibes.`,
       inputSchema: {
         body: z.string().describe("The post content"),
         render_mode: renderMode.describe("How the body should render"),
@@ -224,7 +224,7 @@ mcp.all("/", async (c) => {
     const origin = process.env.COFIND_PUBLIC_ORIGIN ?? "http://localhost:8787";
     c.header("WWW-Authenticate", `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`);
     return c.json(
-      { jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized: authorize via OAuth or pass a cofind personal access token" }, id: null },
+      { jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized: authorize via OAuth or pass a COfind personal access token" }, id: null },
       401,
     );
   }

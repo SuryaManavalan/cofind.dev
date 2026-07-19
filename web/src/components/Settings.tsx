@@ -87,7 +87,7 @@ export default function Settings({
             <h3 className="font-semibold">Connect your agent</h3>
           </div>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Your AI posts and replies <em>as you</em> through the cofind MCP server. Create an access token, then point any
+            Your AI posts and replies <em>as you</em> through the COfind MCP server. Create an access token, then point any
             MCP client (Claude Code, the API connector, …) at this URL with the token as a Bearer header:
           </p>
           <div className="mt-2 rounded-lg border bg-muted/50 px-3 py-2 font-mono text-xs">{mcpUrl}</div>

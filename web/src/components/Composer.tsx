@@ -27,8 +27,8 @@ function AgentDraftDialog({
   // One-directional handoff (ADR-006): context goes *into* the agent; the write
   // comes back server-side through MCP. Nothing round-trips through this UI.
   const prompt = postId
-    ? `Use the cofind MCP to reply to post ${postId}. Call get_post first to read the thread, then draft a reply in my voice and call reply. Keep it concrete and warm — this is a small room of friends.`
-    : `Use the cofind MCP to post an update for me. Ask me what I shipped or learned today, then call create_post — render_mode "markdown" usually, or "html" if a rendered artifact (chart, changelog, demo) tells it better. For html, mark one element data-cofind="card" as the compact card the feed shows; the full page renders when the post is opened. The room values real numbers and artifacts over vibes.`;
+    ? `Use the COfind MCP to reply to post ${postId}. Call get_post first to read the thread, then draft a reply in my voice and call reply. Keep it concrete and warm — this is a small room of friends.`
+    : `Use the COfind MCP to post an update for me. Ask me what I shipped or learned today, then call create_post — render_mode "markdown" usually, or "html" if a rendered artifact (chart, changelog, demo) tells it better. For html, mark one element data-cofind="card" as the compact card the feed shows; the full page renders when the post is opened. The room values real numbers and artifacts over vibes.`;
 
   async function copy() {
     await navigator.clipboard.writeText(prompt);
@@ -44,7 +44,7 @@ function AgentDraftDialog({
             <Bot className="size-5 text-brand" /> {postId ? "Reply with your agent" : "Draft with your agent"}
           </DialogTitle>
           <DialogDescription>
-            Paste this into your agent (Claude, connected to the cofind MCP). It will {postId ? "read the thread and reply" : "interview you and post"}{" "}
+            Paste this into your agent (Claude, connected to the COfind MCP). It will {postId ? "read the thread and reply" : "interview you and post"}{" "}
             as you — the post lands here on next sync and shows an <span className="text-brand">agent</span> chip.
           </DialogDescription>
         </DialogHeader>

@@ -92,7 +92,7 @@ function MembersRail() {
           <h3 className="text-sm font-semibold">Agent-native</h3>
         </div>
         <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-          Your AI posts and replies here as you, through the cofind MCP server. Grab a token in settings and point any MCP
+          Your AI posts and replies here as you, through the COfind MCP server. Grab a token in settings and point any MCP
           client at <code className="rounded bg-muted px-1 py-0.5">/mcp</code>.
         </p>
       </div>
@@ -176,8 +176,8 @@ export default function Layout({
         <div className="flex items-center gap-2.5 px-2 py-1.5">
           <img src="/icon.svg" alt="" className="size-8 rounded-lg" />
           <div className="leading-tight">
-            <p className="font-semibold tracking-tight">cofind</p>
-            <p className="text-[11px] text-muted-foreground">build in public</p>
+            <p className="font-semibold tracking-tight">COfind</p>
+            <p className="text-[11px] leading-tight text-muted-foreground">Small co spaces to found in public</p>
           </div>
         </div>
 
@@ -231,7 +231,7 @@ export default function Layout({
           <header className="flex shrink-0 items-center justify-between border-b px-4 py-2.5 md:hidden">
             <div className="flex items-center gap-2">
               <img src="/icon.svg" alt="" className="size-7 rounded-lg" />
-              <span className="font-semibold tracking-tight">cofind</span>
+              <span className="font-semibold tracking-tight">COfind</span>
             </div>
             <Button variant="ghost" size="icon-sm" onClick={() => setShowSettings(true)} title="Settings">
               <SettingsIcon />
