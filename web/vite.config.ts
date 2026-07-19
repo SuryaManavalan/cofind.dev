@@ -30,7 +30,9 @@ export default defineConfig({
       },
       workbox: {
         // App shell only — feed data stays network-first; never cache API responses.
-        navigateFallbackDenylist: [/^\/api/, /^\/mcp/],
+        // /oauth and /.well-known are server-rendered (consent page, discovery):
+        // the SW must never swallow those navigations into the SPA shell.
+        navigateFallbackDenylist: [/^\/api/, /^\/mcp/, /^\/oauth/, /^\/\.well-known/],
         runtimeCaching: [],
         // Take over immediately so a reload always gets the newest shell —
         // without these a deploy leaves tabs on the stale precache.
