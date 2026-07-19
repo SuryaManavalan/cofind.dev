@@ -6,6 +6,7 @@ import { useFeed } from "../feed-context";
 import { cn } from "@/lib/utils";
 import PostCard from "../components/PostCard";
 import Composer from "../components/Composer";
+import PullToRefresh from "../components/PullToRefresh";
 import { Button } from "@/components/ui/button";
 
 export default function FeedView() {
@@ -45,7 +46,7 @@ export default function FeedView() {
   return (
     <div className="flex h-full flex-col">
       {/* Content flows top→down (ADR-002/003): newest at top, scroll down for older. */}
-      <div className="flex-1 overflow-y-auto">
+      <PullToRefresh onRefresh={refresh}>
         {posts.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
             <div className="flex size-12 items-center justify-center rounded-2xl border bg-muted/50">
@@ -85,7 +86,7 @@ export default function FeedView() {
             )}
           </>
         )}
-      </div>
+      </PullToRefresh>
 
       <Composer
         placeholder="What are you building?"

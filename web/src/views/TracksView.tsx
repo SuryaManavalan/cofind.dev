@@ -1,16 +1,18 @@
 import { useNavigate } from "react-router-dom";
 import { GitBranch } from "lucide-react";
 import { useFeed } from "../feed-context";
+import PullToRefresh from "../components/PullToRefresh";
 import { timeAgo } from "@/lib/utils";
 import Avatar from "../components/Avatar";
 
 // The tracks index: every ongoing story in the room, most recently active first.
 export default function TracksView() {
-  const { tracks } = useFeed();
+  const { tracks, refresh } = useFeed();
   const navigate = useNavigate();
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="flex h-full flex-col">
+      <PullToRefresh onRefresh={refresh}>
       <div className="px-4 pb-8 pt-4 sm:px-6">
         <p className="mb-4 text-xs text-muted-foreground">
           Tracks are followable timelines — one per feature, product, or topic. Write{" "}
@@ -61,6 +63,7 @@ export default function TracksView() {
           </div>
         )}
       </div>
+      </PullToRefresh>
     </div>
   );
 }

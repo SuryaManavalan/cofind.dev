@@ -8,6 +8,7 @@ import { timeAgo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Avatar from "../components/Avatar";
 import PostCard from "../components/PostCard";
+import PullToRefresh from "../components/PullToRefresh";
 
 // Member profile panel — where a clicked @mention lands. Posts come from the
 // same by:<handle> filter the MCP surface exposes (ADR-015).
@@ -58,7 +59,7 @@ export default function ProfileView() {
         <h1 className="text-sm font-semibold">@{handle}</h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <PullToRefresh onRefresh={load}>
         <div className="border-b px-4 py-5 sm:px-6">
           {member ? (
             <div className="flex items-center gap-4">
@@ -148,7 +149,7 @@ export default function ProfileView() {
           ) : (
             posts.map((post) => <PostCard key={post.id} post={post} allReactions={reactions} onChange={load} />)
           ))}
-      </div>
+      </PullToRefresh>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Avatar from "../components/Avatar";
 import PostCard from "../components/PostCard";
+import PullToRefresh from "../components/PullToRefresh";
 import Composer from "../components/Composer";
 
 // A track is the story of one thing being built. Newest-first by default
@@ -142,7 +143,7 @@ export default function TrackView() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <PullToRefresh onRefresh={load}>
         {error && <p className="px-6 py-8 text-sm text-destructive">{error}</p>}
 
         {track && (
@@ -226,7 +227,7 @@ export default function TrackView() {
             );
           })}
         </div>
-      </div>
+      </PullToRefresh>
 
       {canPost && slug && (
         <Composer

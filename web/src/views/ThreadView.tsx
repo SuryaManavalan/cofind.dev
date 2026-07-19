@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import Avatar from "../components/Avatar";
 import RenderBody from "../components/RenderBody";
 import Composer from "../components/Composer";
+import PullToRefresh from "../components/PullToRefresh";
 import { ReactionBar, ReplyItem, TrackChip } from "../components/PostCard";
 
 // Twitter-style thread page: go in from the feed, return with the back arrow.
@@ -69,7 +70,7 @@ export default function ThreadView() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <PullToRefresh onRefresh={load}>
         {error && <p className="px-6 py-8 text-sm text-destructive">{error}</p>}
         {post && (
           <>
@@ -122,7 +123,7 @@ export default function ThreadView() {
             </div>
           </>
         )}
-      </div>
+      </PullToRefresh>
 
       <Composer
         placeholder="Reply (markdown ok)…"
