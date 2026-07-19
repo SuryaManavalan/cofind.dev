@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Activity, Bot, Flame, GitBranch, Home, LayoutGrid, Menu, Settings as SettingsIcon, Sparkles, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { User } from "../types";
@@ -204,6 +204,7 @@ function MobileDrawer({
   openSettings: () => void;
 }) {
   const path = useLocation().pathname;
+  const closeSwipe = useSwipe(() => {}, onClose);
   if (!open) return null;
   const items = [
     { label: "Feed", icon: <Home />, to: "/" },
@@ -215,6 +216,7 @@ function MobileDrawer({
     <div className="fixed inset-0 z-40 md:hidden" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 animate-in fade-in-0" />
       <div
+        {...closeSwipe}
         className="absolute inset-y-0 left-0 flex w-80 max-w-[85vw] flex-col overflow-y-auto border-r bg-background shadow-2xl animate-in slide-in-from-left duration-200"
         onClick={(e) => e.stopPropagation()}
       >
@@ -262,6 +264,52 @@ function MobileDrawer({
   );
 }
 
+// Modern touch navigation (mobile only):
+//  · swipe right on a panel — interactive drag-back (iOS style)
+//  · swipe right on a root view — opens the drawer
+//  · swipe left on the drawer — closes it
+// Guards: horizontal intent required; skips [data-no-swipe] zones (the
+// constellation drags nodes) and horizontally-scrollable <pre> blocks.
+function useSwipe(onRight: (edge: boolean) => void, onLeft?: () => void, onDrag?: (dx: number | null) => void) {
+  const st = useRef<{ x: number; y: number; lastX: number; edge: boolean; locked: "h" | "v" | null } | null>(null);
+  const isMobile = () => window.matchMedia("(max-width: 1023px)").matches;
+  return {
+    onTouchStart(e: React.TouchEvent) {
+      if (!isMobile()) return;
+      const target = e.target as HTMLElement;
+      if (target.closest?.("pre, [data-no-swipe], input, textarea")) {
+        st.current = null;
+        return;
+      }
+      const t = e.touches[0]!;
+      st.current = { x: t.clientX, y: t.clientY, lastX: t.clientX, edge: t.clientX < 32, locked: null };
+    },
+    onTouchMove(e: React.TouchEvent) {
+      const s0 = st.current;
+      if (!s0) return;
+      const t = e.touches[0]!;
+      s0.lastX = t.clientX;
+      const dx = t.clientX - s0.x;
+      const dy = t.clientY - s0.y;
+      if (!s0.locked) {
+        if (Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy) * 1.4) s0.locked = "h";
+        else if (Math.abs(dy) > 14) s0.locked = "v";
+      }
+      if (s0.locked === "h" && dx > 0) onDrag?.(dx);
+    },
+    onTouchEnd(e: React.TouchEvent) {
+      const s0 = st.current;
+      st.current = null;
+      onDrag?.(null);
+      if (!s0 || s0.locked !== "h") return;
+      const dx = (e.changedTouches[0]?.clientX ?? s0.lastX) - s0.x;
+      const threshold = s0.edge ? 56 : 100;
+      if (dx > threshold) onRight(s0.edge);
+      else if (dx < -threshold && onLeft) onLeft();
+    },
+  };
+}
+
 export default function Layout({
   user,
   onLogout,
@@ -275,15 +323,26 @@ export default function Layout({
 }) {
   const [showSettings, setShowSettings] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [panelDx, setPanelDx] = useState<number | null>(null);
   const navigate = useNavigate();
   const path = useLocation().pathname;
+  const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate("/"));
+  // Panels: interactive drag-back. Root: big right-swipe opens the drawer.
+  const panelSwipe = useSwipe(
+    () => goBack(),
+    undefined,
+    (dx) => setPanelDx(dx),
+  );
+  const rootSwipe = useSwipe(() => {
+    if (!panel && !drawerOpen) setDrawerOpen(true);
+  });
   const onGallery = path === "/gallery";
   const onTracks = path === "/tracks";
   const onGraph = path === "/graph";
   const onFeed = !onGallery && !onTracks && !onGraph;
 
   return (
-    <div className="flex h-dvh w-full justify-center">
+    <div className="flex h-dvh w-full justify-center" {...(!panel && !drawerOpen ? rootSwipe : {})}>
       {/* Desktop sidebar */}
       <aside className="hidden w-60 shrink-0 flex-col border-r p-4 md:flex">
         <div className="flex items-center gap-2.5 px-2 py-1.5">
@@ -390,7 +449,14 @@ export default function Layout({
       {/* Thread: full-screen overlay on small screens; on lg+ a wide reading
           panel that takes the remaining width (the rail steps aside) */}
       {panel && (
-        <div className="fixed inset-0 z-10 flex flex-col bg-background lg:static lg:z-auto lg:min-w-[26rem] lg:max-w-[52rem] lg:grow lg:border-r lg:animate-in lg:slide-in-from-right-4 lg:fade-in-0">
+        <div
+          {...panelSwipe}
+          style={panelDx !== null ? { transform: `translateX(${panelDx}px)`, transition: "none" } : { transition: "transform 200ms ease" }}
+          className="fixed inset-0 z-10 flex flex-col bg-background lg:static lg:z-auto lg:!transform-none lg:min-w-[26rem] lg:max-w-[52rem] lg:grow lg:border-r lg:animate-in lg:slide-in-from-right-4 lg:fade-in-0"
+        >
+          {/* iOS-style edge strip: back-swipe works even over artifact iframes,
+              which otherwise swallow touches entirely. */}
+          <div className="absolute inset-y-0 left-0 z-20 w-5 lg:hidden" />
           {panel}
         </div>
       )}
