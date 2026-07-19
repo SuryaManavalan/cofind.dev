@@ -57,7 +57,7 @@ export default function GalleryView() {
                   <span className="truncate text-xs font-medium">{post.author.display_name}</span>
                   <ViaChip via={post.via} compact />
                   {post.tracks.slice(0, 1).map((t) => (
-                    <span key={t.slug} className="truncate text-[10px] text-emerald-500">#{t.slug}</span>
+                    <span key={t.slug} className="truncate text-[10px] text-success">#{t.slug}</span>
                   ))}
                   <span className="ml-auto flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
                     {post.reply_count > 0 && (

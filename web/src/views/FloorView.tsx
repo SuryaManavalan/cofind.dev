@@ -35,7 +35,7 @@ function Tape({ events }: { events: TapeEvent[] }) {
       <div className="tape-track flex w-max items-center gap-6 px-4 py-1.5">
         {items.map((e, i) => (
           <span key={i} className="flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className={cn("size-1.5 rounded-full", e.side === "yes" ? "bg-emerald-500" : "bg-destructive")} />
+            <span className={cn("size-1.5 rounded-full", e.side === "yes" ? "bg-success" : "bg-destructive")} />
             <b className="font-medium text-foreground">@{e.handle}</b>
             {e.action === "buy" ? "staked" : "sold"} {Math.abs(e.cost)} {e.side.toUpperCase()} on
             <span className="font-medium text-brand">#{e.slug}</span>
@@ -130,7 +130,7 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
               <b className="tabular-nums text-foreground">{wallet.at_stake}</b> at stake
             </span>
             <span>
-              <b className="tabular-nums text-emerald-500">{wallet.earned_total}</b> minted all-time
+              <b className="tabular-nums text-success">{wallet.earned_total}</b> minted all-time
             </span>
           </div>
         </div>
@@ -141,7 +141,7 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
         <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
           {wallet.recent.slice(0, 6).map((r, i) => (
             <span key={i} className="whitespace-nowrap">
-              <span className={r.delta > 0 ? "font-medium text-emerald-500" : "font-medium text-destructive"}>
+              <span className={r.delta > 0 ? "font-medium text-success" : "font-medium text-destructive"}>
                 {r.delta > 0 ? "+" : ""}
                 {r.delta}
               </span>{" "}
@@ -163,7 +163,7 @@ function MiniChart({ spark, settled, outcome }: { spark: number[]; settled: bool
   const pad = Math.max((hi - lo) * 0.25, 0.03);
   const yOf = (p: number) => h - ((p - lo + pad) / (hi - lo + pad * 2)) * (h - 4) - 2;
   const line = pts.map((p, i) => `${((i / (pts.length - 1)) * w).toFixed(1)},${yOf(p).toFixed(1)}`).join(" ");
-  const color = settled ? (outcome === "yes" ? "#10b981" : "#ef4444") : "var(--brand)";
+  const color = settled ? (outcome === "yes" ? "var(--success)" : "var(--destructive)") : "var(--brand)";
   const lastY = yOf(pts[pts.length - 1]!);
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="h-8 w-full min-w-0" preserveAspectRatio="none">
@@ -208,13 +208,13 @@ function MarketCard({ m, onTraded }: { m: FloorMarket; onTraded: () => void }) {
           <div
             className={cn(
               "text-[26px] font-extrabold leading-none tabular-nums tracking-tight",
-              settled ? (m.outcome === "yes" ? "text-emerald-500" : "text-destructive") : "text-foreground",
+              settled ? (m.outcome === "yes" ? "text-success" : "text-destructive") : "text-foreground",
             )}
           >
             {settled ? (m.outcome === "yes" ? "YES" : "NO") : `${pct}%`}
           </div>
           {!settled && move !== 0 && (
-            <div className={cn("mt-0.5 text-[10px] font-bold tabular-nums", move > 0 ? "text-emerald-500" : "text-destructive")}>
+            <div className={cn("mt-0.5 text-[10px] font-bold tabular-nums", move > 0 ? "text-success" : "text-destructive")}>
               {move > 0 ? "▲" : "▼"}{Math.abs(move)}
             </div>
           )}
@@ -249,7 +249,7 @@ function MarketCard({ m, onTraded }: { m: FloorMarket; onTraded: () => void }) {
             <button
               onClick={(e) => stake("yes", e)}
               disabled={busy}
-              className="rounded-lg border border-emerald-500/40 px-2.5 py-1 text-[10px] font-extrabold tabular-nums text-emerald-500 transition-all hover:bg-emerald-500/15 active:scale-95"
+              className="rounded-lg border border-success/40 px-2.5 py-1 text-[10px] font-extrabold tabular-nums text-success transition-all hover:bg-success/15 active:scale-95"
             >
               YES {yesPrice}¢
             </button>

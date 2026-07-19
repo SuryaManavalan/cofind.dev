@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Sparkles } from "lucide-react";
 import { api } from "../api";
 import { useFeed } from "../feed-context";
@@ -9,11 +9,50 @@ import Composer from "../components/Composer";
 import PullToRefresh from "../components/PullToRefresh";
 import { Button } from "@/components/ui/button";
 
+// Survives across the thread overlay: on iOS a `position: fixed` overlay
+// (the thread) drops the scroll offset of the feed underneath it, so we
+// remember it here and put it back when the feed is the visible route again.
+let feedScrollMemory = 0;
+
 export default function FeedView() {
   const { posts, reactions, refresh, loadMore, nextCursor, loadingMore, initialUnseen } = useFeed();
   const navigate = useNavigate();
+  const location = useLocation();
   const [selected, setSelected] = useState(-1);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // True only while the feed is the visible route — so we don't record the
+  // scroll offset an overlay (thread) forces to 0 while it covers the feed.
+  const active = useRef(location.pathname === "/");
+  active.current = location.pathname === "/";
+
+  // Remember where the feed is scrolled — but only while it's actually on top.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (active.current) feedScrollMemory = el.scrollTop;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // When the feed becomes the active route again (back from a thread/profile/
+  // track), restore the remembered offset after layout settles.
+  useEffect(() => {
+    if (location.pathname !== "/") return;
+    if (feedScrollMemory <= 0) return;
+    const restore = () => {
+      const el = scrollRef.current;
+      if (el) el.scrollTop = feedScrollMemory;
+    };
+    const raf = requestAnimationFrame(() => requestAnimationFrame(restore));
+    const timer = setTimeout(restore, 60);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+    };
+  }, [location.pathname]);
 
   // "Caught up" divider: sits between what was new when you arrived and
   // everything you'd already seen (powered by the seen table).
@@ -46,7 +85,7 @@ export default function FeedView() {
   return (
     <div className="flex h-full flex-col">
       {/* Content flows top→down (ADR-002/003): newest at top, scroll down for older. */}
-      <PullToRefresh onRefresh={refresh}>
+      <PullToRefresh onRefresh={refresh} scrollRef={scrollRef}>
         {posts.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-8 text-center">
             <div className="flex size-12 items-center justify-center rounded-2xl border bg-muted/50">

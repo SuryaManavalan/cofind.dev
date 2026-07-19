@@ -218,7 +218,7 @@ export default function Composer({
                   {p.member ? (
                     <Avatar handle={p.member.handle} name={p.member.display_name} className="size-6 text-[10px]" />
                   ) : (
-                    <span className={cn("flex size-6 items-center justify-center rounded-full border text-xs", p.isNew ? "text-emerald-500 border-emerald-500/40" : "text-emerald-500")}>#</span>
+                    <span className={cn("flex size-6 items-center justify-center rounded-full border text-xs", p.isNew ? "text-success border-success/40" : "text-success")}>#</span>
                   )}
                   <span className="truncate text-sm font-medium">{p.label}</span>
                   <span className="truncate text-xs text-muted-foreground">{p.sub}</span>

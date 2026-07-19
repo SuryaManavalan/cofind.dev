@@ -6,7 +6,9 @@ function themeColors(): string[] {
   const cs = getComputedStyle(document.documentElement);
   const brand = cs.getPropertyValue("--brand").trim() || "#8bafd0";
   const fg = cs.getPropertyValue("--foreground").trim() || "#ffffff";
-  return [brand, "#10b981", fg, brand, "#f59e0b"];
+  const success = cs.getPropertyValue("--success").trim() || "#34d399";
+  const warning = cs.getPropertyValue("--warning").trim() || "#fbbf24";
+  return [brand, success, fg, brand, warning];
 }
 
 interface Particle {

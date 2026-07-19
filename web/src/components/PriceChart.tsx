@@ -72,7 +72,7 @@ export default function PriceChart({
     return { path: d, area: `${d} L ${lastX} ${H - PAD_B} L ${x(pts[0]!.t).toFixed(1)} ${H - PAD_B} Z` };
   }, [data, H]);
 
-  const color = settled ? (outcome === "yes" ? "#10b981" : "#ef4444") : "var(--brand)";
+  const color = settled ? (outcome === "yes" ? "var(--success)" : "var(--destructive)") : "var(--brand)";
   const last = data.pts[data.pts.length - 1]!;
   const gid = useMemo(() => `pg${Math.floor(last.t % 100000)}`, [last.t]);
 

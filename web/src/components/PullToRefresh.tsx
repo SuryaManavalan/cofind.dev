@@ -11,12 +11,16 @@ export default function PullToRefresh({
   onRefresh,
   className,
   children,
+  scrollRef,
 }: {
   onRefresh: () => Promise<unknown>;
   className?: string;
   children: React.ReactNode;
+  // Optional handle on the scroll viewport, so a parent can persist and
+  // restore its scroll position across navigation (see FeedView).
+  scrollRef?: React.MutableRefObject<HTMLDivElement | null>;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
   const startY = useRef<number | null>(null);
   const [pull, setPull] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -64,13 +68,16 @@ export default function PullToRefresh({
       >
         <span className="flex size-8 items-center justify-center rounded-full border bg-card shadow-md">
           <RefreshCw
-            className={cn("size-4 text-emerald-500", busy && "animate-spin")}
+            className={cn("size-4 text-success", busy && "animate-spin")}
             style={busy ? undefined : { transform: `rotate(${pull * 3}deg)`, opacity: Math.min(pull / THRESHOLD, 1) }}
           />
         </span>
       </div>
       <div
-        ref={ref}
+        ref={(el) => {
+          ref.current = el;
+          if (scrollRef) scrollRef.current = el;
+        }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}

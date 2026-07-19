@@ -65,13 +65,13 @@ export default function ProfileView() {
             <div className="flex items-center gap-4">
               <div className="relative">
                 <Avatar handle={member.handle} name={member.display_name} className="size-14 text-lg" />
-                {online && <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-background bg-emerald-500" />}
+                {online && <span className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-background bg-success" />}
               </div>
               <div className="min-w-0">
                 <p className="text-lg font-semibold leading-tight">{member.display_name}</p>
                 <p className="text-sm text-muted-foreground">@{member.handle}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {online ? <span className="text-emerald-500">online now</span> : member.last_active_at ? `active ${timeAgo(member.last_active_at)}` : "not seen yet"}
+                  {online ? <span className="text-success">online now</span> : member.last_active_at ? `active ${timeAgo(member.last_active_at)}` : "not seen yet"}
                   <span className="mx-1.5">·</span>joined {new Date(member.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 </p>
               </div>
@@ -97,7 +97,7 @@ export default function ProfileView() {
                 <button
                   key={t.id}
                   onClick={() => navigate(`/t/${t.slug}`)}
-                  className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2.5 py-1 text-xs text-emerald-500 transition-colors hover:bg-emerald-500/15"
+                  className="rounded-full border border-success/30 bg-success/5 px-2.5 py-1 text-xs text-success transition-colors hover:bg-success/15"
                 >
                   #{t.slug}
                 </button>
@@ -114,9 +114,9 @@ export default function ProfileView() {
                     <button
                       key={t.id}
                       onClick={() => navigate(`/t/${t.slug}`)}
-                      className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-left transition-colors hover:bg-emerald-500/20"
+                      className="rounded-lg border border-success/40 bg-success/10 px-2.5 py-1.5 text-left transition-colors hover:bg-success/20"
                     >
-                      <span className="block text-xs font-semibold text-emerald-500">🚢 {t.title}</span>
+                      <span className="block text-xs font-semibold text-success">🚢 {t.title}</span>
                       <span className="block text-[10px] text-muted-foreground">
                         {days} {days === 1 ? "day" : "days"} · {t.post_count} stops
                       </span>
