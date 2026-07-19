@@ -46,9 +46,9 @@ export const api = {
     request<{ ok: true; added: boolean }>("/react", { method: "POST", body: JSON.stringify({ target_id, reaction }) }),
   markSeen: (post_ids: string[]) => request<{ ok: true }>("/seen", { method: "POST", body: JSON.stringify({ post_ids }) }),
   listTracks: () => request<{ tracks: TrackSummary[] }>("/tracks"),
-  getTrack: (slug: string) => request<{ track: TrackSummary; posts: PostSummary[] }>(`/tracks/${encodeURIComponent(slug)}`),
+  getTrack: (slug: string) => request<{ track: TrackSummary; posts: PostSummary[] }>(`/tracks/${slug.split("/").map(encodeURIComponent).join("/")}`),
   updateTrack: (slug: string, fields: { title?: string; description?: string }) =>
-    request<{ track: TrackSummary }>(`/tracks/${encodeURIComponent(slug)}`, { method: "PATCH", body: JSON.stringify(fields) }),
+    request<{ track: TrackSummary }>(`/tracks/${slug.split("/").map(encodeURIComponent).join("/")}`, { method: "PATCH", body: JSON.stringify(fields) }),
   updateProfile: (fields: { display_name?: string; bio?: string; link?: string }) =>
     request<{ user: User }>("/profile", { method: "PATCH", body: JSON.stringify(fields) }),
   listTokens: () => request<{ tokens: AccessToken[] }>("/tokens"),

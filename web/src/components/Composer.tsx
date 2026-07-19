@@ -80,7 +80,7 @@ export default function Composer({
   const [previewing, setPreviewing] = useState(false);
   const [agentDialog, setAgentDialog] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { members, tracks } = useFeed();
+  const { me, members, tracks } = useFeed();
 
   // @mention and #track autocomplete: track an in-progress token before the caret.
   const [mention, setMention] = useState<{ kind: "@" | "#"; query: string; start: number } | null>(null);
@@ -98,20 +98,35 @@ export default function Composer({
           )
           .slice(0, 5)
           .map((m) => ({ key: m.id, insert: `@${m.handle}`, label: m.display_name, sub: `@${m.handle}`, member: m }))
-      : [
-          ...tracks
-            .filter((t) => t.slug.startsWith(mention.query.toLowerCase()) || t.title.toLowerCase().includes(mention.query.toLowerCase()))
-            .slice(0, 5)
-            .map((t) => ({ key: t.id, insert: `#${t.slug}`, label: t.title, sub: `#${t.slug} · ${t.post_count} updates` })),
-          ...(/^[a-z][a-z0-9-]{1,40}$/.test(mention.query) && !tracks.some((t) => t.slug === mention.query)
-            ? [{ key: "new", insert: `#${mention.query}`, label: `Start track #${mention.query}`, sub: "new timeline", isNew: true }]
-            : []),
-        ];
+      : (() => {
+          const q = mention.query.toLowerCase().replace(/^me\//, `${me.handle.toLowerCase()}/`).replace(/^~/, `${me.handle.toLowerCase()}/`);
+          const existing = tracks
+            .filter((t) => t.slug.startsWith(q) || t.title.toLowerCase().includes(q))
+            .slice(0, 4)
+            .map((t) => ({
+              key: t.id,
+              insert: `#${t.slug}`,
+              label: t.title,
+              sub: `#${t.slug} · ${t.post_count} updates${t.owner ? ` · @${t.owner.handle}'s` : ""}`,
+            }));
+          const creates =
+            /^[a-z][a-z0-9-]{1,40}$/.test(q)
+              ? [
+                  ...(!tracks.some((t) => t.slug === q)
+                    ? [{ key: "new-c", insert: `#${q}`, label: `Start #${q}`, sub: "communal — anyone can post to it", isNew: true }]
+                    : []),
+                  ...(!tracks.some((t) => t.slug === `${me.handle.toLowerCase()}/${q}`)
+                    ? [{ key: "new-p", insert: `#${me.handle.toLowerCase()}/${q}`, label: `Start #${me.handle.toLowerCase()}/${q}`, sub: "yours — only your posts join (shorthand #~)", isNew: true }]
+                    : []),
+                ]
+              : [];
+          return [...existing, ...creates];
+        })();
 
   function syncMention(el: HTMLTextAreaElement) {
     const upToCaret = el.value.slice(0, el.selectionStart ?? el.value.length);
     const at = /(?:^|[\s(])@([a-zA-Z0-9_]{0,24})$/.exec(upToCaret);
-    const hash = /(?:^|[\s(])#([a-z0-9-]{0,40})$/.exec(upToCaret);
+    const hash = /(?:^|[\s(])#(~?(?:me\/)?[a-z0-9/_-]{0,45})$/.exec(upToCaret);
     if (at) {
       setMention({ kind: "@", query: at[1] ?? "", start: upToCaret.length - (at[1]?.length ?? 0) - 1 });
       setMentionIndex(0);
@@ -183,7 +198,7 @@ export default function Composer({
       <div className={cn("flex items-end gap-2", previewing && canPreview && "hidden")}>
         <div className="relative min-w-0 flex-1">
           {mention && suggestions.length > 0 && (
-            <div className="absolute bottom-[calc(100%+0.5rem)] left-0 z-20 w-72 overflow-hidden rounded-xl border bg-popover p-1 shadow-xl animate-in fade-in-0 zoom-in-95">
+            <div className="absolute bottom-[calc(100%+0.5rem)] left-0 z-20 w-80 overflow-hidden rounded-xl border bg-popover p-1 shadow-xl animate-in fade-in-0 zoom-in-95">
               <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 {mention.kind === "@" ? "Ask someone — their agent gets it via catch_up" : "Link to a track — the story of one thing"}
               </p>

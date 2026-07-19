@@ -25,7 +25,7 @@ marked.use({
         return src.match(/#[a-z]/)?.index;
       },
       tokenizer(src: string) {
-        const match = /^#([a-z][a-z0-9-]{1,40})/.exec(src);
+        const match = /^#((?:[a-z0-9_]{2,24}\/)?[a-z][a-z0-9-]{1,40})/.exec(src);
         if (match) return { type: "track", raw: match[0], slug: match[1] };
         return undefined;
       },
@@ -64,7 +64,7 @@ type Variant = "preview" | "full";
 
 const URL_RE = /(https?:\/\/[^\s<]+[^\s<.,;:!?')\]])/g;
 const MENTION_SPLIT_RE = /(@[a-zA-Z0-9_]{2,24})/g;
-const TRACK_SPLIT_RE = /(#[a-z][a-z0-9-]{1,40})/g;
+const TRACK_SPLIT_RE = /(#(?:[a-z0-9_]{2,24}\/)?[a-z][a-z0-9-]{1,40})/g;
 
 function withTracks(text: string, keyBase: string): React.ReactNode[] {
   return text.split(TRACK_SPLIT_RE).map((chunk, j) =>

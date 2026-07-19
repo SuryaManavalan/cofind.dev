@@ -45,6 +45,7 @@ export interface TrackSummary {
   id: string;
   slug: string;
   title: string;
+  owner: Author | null;
   description: string | null;
   created_at: number;
   post_count: number;

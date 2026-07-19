@@ -13,7 +13,8 @@ import PostCard from "../components/PostCard";
 // A track reads oldest-first — it's the story of one thing being built,
 // rendered as a literal timeline. The feed covers recency; this covers narrative.
 export default function TrackView() {
-  const { slug } = useParams<{ slug: string }>();
+  const params = useParams<{ ns?: string; slug: string }>();
+  const slug = params.ns ? `${params.ns}/${params.slug}` : params.slug;
   const navigate = useNavigate();
   const { reactions } = useFeed();
   const [track, setTrack] = useState<TrackSummary | null>(null);
@@ -63,8 +64,15 @@ export default function TrackView() {
           <ArrowLeft />
         </Button>
         <div className="min-w-0 leading-tight">
-          <h1 className="truncate text-sm font-semibold">
-            {track?.title ?? slug} <span className="ml-1 font-normal text-emerald-500">#{slug}</span>
+          <h1 className="flex items-center gap-1.5 truncate text-sm font-semibold">
+            {track?.owner && <Avatar handle={track.owner.handle} name={track.owner.display_name} className="size-4.5 text-[8px]" />}
+            <span className="truncate">{track?.title ?? slug}</span>
+            <span className="shrink-0 font-normal text-emerald-500">#{slug}</span>
+            {track?.owner && (
+              <span className="shrink-0 rounded-full border border-emerald-500/30 px-1.5 text-[10px] font-medium text-emerald-500" title={`Personal track — only @${track.owner.handle}'s posts join`}>
+                @{track.owner.handle}'s
+              </span>
+            )}
           </h1>
           {track && (
             <p className="text-xs text-muted-foreground">

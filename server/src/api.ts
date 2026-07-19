@@ -106,10 +106,15 @@ api.post("/seen", async (c) => {
 api.get("/tracks", (c) => c.json({ tracks: posts.listTracks() }));
 
 api.get("/tracks/:slug", (c) => c.json(posts.getTrack(c.get("user").id, c.req.param("slug"))));
+api.get("/tracks/:ns/:slug", (c) => c.json(posts.getTrack(c.get("user").id, `${c.req.param("ns")}/${c.req.param("slug")}`)));
 
 api.patch("/tracks/:slug", async (c) => {
   const { title, description } = await c.req.json();
   return c.json({ track: posts.updateTrack(c.req.param("slug"), { title, description }) });
+});
+api.patch("/tracks/:ns/:slug", async (c) => {
+  const { title, description } = await c.req.json();
+  return c.json({ track: posts.updateTrack(`${c.req.param("ns")}/${c.req.param("slug")}`, { title, description }) });
 });
 
 api.patch("/profile", async (c) => {

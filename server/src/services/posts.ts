@@ -228,6 +228,7 @@ export function createPost(
 ): { post_id: string } {
   validateBody(body);
   validateRenderMode(renderMode);
+  body = normalizeTrackSugar(body, authorId, renderMode);
 
   if (idempotencyKey) {
     const existing = db.prepare("SELECT id FROM posts WHERE author_id = ? AND idempotency_key = ?").get(authorId, idempotencyKey) as
@@ -390,6 +391,7 @@ export function updatePost(
   if (post.author_id !== authorId) throw new ApiError(403, "You can only update your own posts");
   const mode = renderMode ?? post.render_mode;
   validateRenderMode(mode);
+  body = normalizeTrackSugar(body, authorId, mode);
   checkWriteRate(authorId);
   const now = Date.now();
   db.prepare("UPDATE posts SET body = ?, render_mode = ?, edited_at = ? WHERE id = ?").run(body, mode, now, postId);
@@ -400,44 +402,93 @@ export function updatePost(
 
 // --- Tracks (ADR-021): followable timelines of a feature/product/topic ---
 
-const TRACK_INLINE_RE = /(?:^|[\s(])#([a-z][a-z0-9-]{1,40})/g;
+const TRACK_INLINE_RE = /(?:^|[\s(])#((?:[a-z0-9_]{2,24}\/)?[a-z][a-z0-9-]{1,40})/g;
+const TRACK_SLUG_RE = /^(?:[a-z0-9_]{2,24}\/)?[a-z][a-z0-9-]{1,40}$/;
 
 function slugTitle(slug: string): string {
-  return slug.replace(/-/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
+  const base = slug.includes("/") ? slug.split("/")[1]! : slug;
+  return base.replace(/-/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
-function ensureTrack(slug: string, userId: string): string {
-  const existing = db.prepare("SELECT id FROM tracks WHERE slug = ?").get(slug) as { id: string } | undefined;
-  if (existing) return existing.id;
+function authorHandle(userId: string): string {
+  return (db.prepare("SELECT handle FROM users WHERE id = ?").get(userId) as { handle: string }).handle.toLowerCase();
+}
+
+// #me/slug and #~slug are input sugar for #<yourhandle>/slug — rewritten in the
+// stored body at write time so everyone always reads the canonical name.
+export function normalizeTrackSugar(body: string, authorId: string, renderMode: string): string {
+  if (renderMode === "html") return body;
+  const handle = authorHandle(authorId);
+  return body.replace(/#me\//gi, `#${handle}/`).replace(/#~(?=[a-z])/g, `#${handle}/`);
+}
+
+// Namespaced slugs ("handle/slug") are PERSONAL: only that member's posts
+// attach — everyone else's usage renders as a reference, never an injection.
+// Returns null when attachment isn't allowed (or the namespace is someone else's).
+function ensureTrack(slug: string, userId: string, strict: boolean): string | null {
+  const existing = db.prepare("SELECT id, owner_id FROM tracks WHERE slug = ?").get(slug) as
+    | { id: string; owner_id: string | null }
+    | undefined;
+  const ns = slug.includes("/") ? slug.split("/")[0]! : null;
+
+  if (existing) {
+    if (existing.owner_id && existing.owner_id !== userId) {
+      if (strict) throw new ApiError(403, `#${slug} is @${ns}'s personal track — only their posts can join it`);
+      return null;
+    }
+    return existing.id;
+  }
+
+  let ownerId: string | null = null;
+  if (ns) {
+    const owner = db.prepare("SELECT id FROM users WHERE handle = ? COLLATE NOCASE").get(ns) as { id: string } | undefined;
+    if (!owner) {
+      if (strict) throw new ApiError(400, `No member @${ns} — personal tracks are #<handle>/slug (or #me/slug for your own)`);
+      return null;
+    }
+    if (owner.id !== userId) {
+      if (strict) throw new ApiError(403, `#${slug} would be @${ns}'s personal track — you can reference it, not create it`);
+      return null;
+    }
+    ownerId = owner.id;
+  }
+
   const id = newId("t");
-  db.prepare("INSERT INTO tracks (id, slug, title, created_by, created_at) VALUES (?, ?, ?, ?, ?)").run(
+  db.prepare("INSERT INTO tracks (id, slug, title, created_by, owner_id, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(
     id,
     slug,
     slugTitle(slug),
     userId,
+    ownerId,
     Date.now(),
   );
   return id;
 }
 
-// Inline #slug works in text/markdown; html artifacts attach via the explicit
-// tracks param (MCP) since hashtags don't belong in markup.
+// Inline #slug works in text/markdown (silent skip when not permitted); html
+// artifacts attach via the explicit tracks param (MCP), which errors loudly.
 function attachTracks(postId: string, authorId: string, body: string, renderMode: string, explicit: string[]): void {
-  const slugs = new Set<string>();
+  const handle = authorHandle(authorId);
+  const strictSlugs = new Set<string>();
   for (const raw of explicit) {
-    const slug = raw.toLowerCase().replace(/^#/, "").trim();
-    if (/^[a-z][a-z0-9-]{1,40}$/.test(slug)) slugs.add(slug);
+    let slug = raw.toLowerCase().replace(/^#/, "").trim();
+    slug = slug.replace(/^me\//, `${handle}/`).replace(/^~/, `${handle}/`);
+    if (!TRACK_SLUG_RE.test(slug)) throw new ApiError(400, `Invalid track slug: "${raw}"`);
+    strictSlugs.add(slug);
   }
+  const inlineSlugs = new Set<string>();
   if (renderMode !== "html") {
     for (const match of body.matchAll(TRACK_INLINE_RE)) {
-      if (match[1]) slugs.add(match[1].toLowerCase());
+      if (match[1]) inlineSlugs.add(match[1].toLowerCase());
     }
   }
-  if (slugs.size === 0) return;
   const now = Date.now();
-  for (const slug of slugs) {
-    const trackId = ensureTrack(slug, authorId);
-    db.prepare("INSERT OR IGNORE INTO post_tracks (post_id, track_id, created_at) VALUES (?, ?, ?)").run(postId, trackId, now);
+  for (const [slugSet, strict] of [[strictSlugs, true], [inlineSlugs, false]] as const) {
+    for (const slug of slugSet) {
+      const trackId = ensureTrack(slug, authorId, strict);
+      if (trackId)
+        db.prepare("INSERT OR IGNORE INTO post_tracks (post_id, track_id, created_at) VALUES (?, ?, ?)").run(postId, trackId, now);
+    }
   }
 }
 
@@ -447,12 +498,16 @@ export interface TrackSummary {
   title: string;
   description: string | null;
   created_at: number;
+  owner: Author | null;
   post_count: number;
   last_post_at: number | null;
   contributors: Author[];
 }
 
-function trackSummary(row: { id: string; slug: string; title: string; description: string | null; created_at: number }): TrackSummary {
+function trackSummary(row: { id: string; slug: string; title: string; description: string | null; created_at: number; owner_id?: string | null }): TrackSummary {
+  const owner = row.owner_id
+    ? (db.prepare("SELECT id, handle, display_name FROM users WHERE id = ?").get(row.owner_id) as Author)
+    : null;
   const stats = db
     .prepare(
       `SELECT COUNT(*) AS n, MAX(p.created_at) AS last FROM post_tracks pt JOIN posts p ON p.id = pt.post_id WHERE pt.track_id = ?`,
@@ -465,17 +520,18 @@ function trackSummary(row: { id: string; slug: string; title: string; descriptio
        WHERE pt.track_id = ? ORDER BY u.handle LIMIT 8`,
     )
     .all(row.id) as Author[];
-  return { ...row, post_count: stats.n, last_post_at: stats.last, contributors };
+  const { owner_id: _o, ...rest } = row;
+  return { ...rest, owner, post_count: stats.n, last_post_at: stats.last, contributors };
 }
 
 export function listTracks(): TrackSummary[] {
-  const rows = db.prepare("SELECT id, slug, title, description, created_at FROM tracks").all() as Parameters<typeof trackSummary>[0][];
+  const rows = db.prepare("SELECT id, slug, title, description, owner_id, created_at FROM tracks").all() as Parameters<typeof trackSummary>[0][];
   return rows.map(trackSummary).sort((a, b) => (b.last_post_at ?? 0) - (a.last_post_at ?? 0));
 }
 
 // A track reads chronologically — it's the story of the thing being built.
 export function getTrack(viewerId: string, slug: string): { track: TrackSummary; posts: PostSummary[] } {
-  const row = db.prepare("SELECT id, slug, title, description, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
+  const row = db.prepare("SELECT id, slug, title, description, owner_id, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
     | Parameters<typeof trackSummary>[0]
     | undefined;
   if (!row) throw new ApiError(404, "Track not found");
@@ -486,7 +542,7 @@ export function getTrack(viewerId: string, slug: string): { track: TrackSummary;
 }
 
 export function updateTrack(slug: string, fields: { title?: string; description?: string }): TrackSummary {
-  const row = db.prepare("SELECT id, slug, title, description, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
+  const row = db.prepare("SELECT id, slug, title, description, owner_id, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
     | Parameters<typeof trackSummary>[0]
     | undefined;
   if (!row) throw new ApiError(404, "Track not found");

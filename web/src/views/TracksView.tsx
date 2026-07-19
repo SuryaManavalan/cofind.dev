@@ -39,6 +39,11 @@ export default function TracksView() {
                   <div className="flex items-baseline gap-2">
                     <span className="font-semibold">{t.title}</span>
                     <span className="text-xs text-emerald-500">#{t.slug}</span>
+                    {t.owner && (
+                      <span className="rounded-full border border-emerald-500/30 px-1.5 text-[10px] font-medium text-emerald-500" title="Personal track — only their posts join">
+                        @{t.owner.handle}'s
+                      </span>
+                    )}
                   </div>
                   {t.description && <p className="mt-0.5 truncate text-xs text-muted-foreground">{t.description}</p>}
                   <p className="mt-1 text-xs text-muted-foreground">
