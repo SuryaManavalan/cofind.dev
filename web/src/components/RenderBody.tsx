@@ -152,6 +152,8 @@ function CappedPreview({ children }: { children: React.ReactNode }) {
 }
 
 const PREVIEW_FRAME_MAX = 320;
+// A carded poster is the author's designed face — show all of it (within reason).
+const CARD_FRAME_MAX = 480;
 const FULL_FRAME_MAX = 4000;
 
 // Strict CSP for the hostile frame: no network at all, inline style/script only,
@@ -234,7 +236,7 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
 
   const cardHtml = variant === "preview" ? extractCard(body) : null;
   const frameBody = cardHtml ?? body;
-  const maxHeight = variant === "preview" ? PREVIEW_FRAME_MAX : FULL_FRAME_MAX;
+  const maxHeight = variant === "preview" ? (cardHtml ? CARD_FRAME_MAX : PREVIEW_FRAME_MAX) : FULL_FRAME_MAX;
   // Card faces are posters: never show internal scrollbars in the feed/gallery.
   const previewCss = variant === "preview" ? "<style>html,body{overflow:hidden}</style>" : "";
 
@@ -248,7 +250,8 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  const truncated = variant === "preview" && !cardHtml && contentHeight > PREVIEW_FRAME_MAX;
+  // Applies to carded posters too — the fade is the ellipsis; glyphs never slice raw.
+  const truncated = variant === "preview" && contentHeight > maxHeight;
 
   return (
     <div className="relative">
