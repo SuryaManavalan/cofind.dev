@@ -1,0 +1,26 @@
+name: Deploy dev
+
+# Merges into develop go live on https://dev.cofind.dev automatically.
+# Fork PRs never reach this workflow (no secrets on pull_request) — only
+# maintainer merges and collaborator pushes trigger a deploy.
+
+on:
+  push:
+    branches: [develop]
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh && echo "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new ec2-user@"$HOST" \
+            'bash /opt/cofind/deploy/remote-deploy.sh dev'

@@ -145,6 +145,12 @@ One backend, one API, one database. The **MCP server is a thin service that shar
 **Why:** The claude.ai custom-connector UI only speaks OAuth — a PAT physically cannot be entered ("A client id must be provided with a client secret"). This was ADR-010's documented limitation arriving on schedule; the pain pulled the complexity, exactly per the plan doc's principle.
 **Consequence:** Onboarding is now the marquee flow: paste `https://cofind.dev/mcp` into claude.ai with the Advanced fields left empty — Claude discovers, registers, and sends the user to COfind's consent page. Connectors added on web sync to Claude mobile, unblocking the ADR-008 handoff test. Tokens are hashed at rest; consent requires the user's COfind login.
 
+### ADR-020 — The room builds the room: community develop branch + dev environment
+**Status:** Accepted (2026-07-18)
+**Decision:** COfind is developed in the open by its own members. `develop` is the community integration branch: anyone contributes by fork + PR (no collaborator access needed); trusted regulars get collaborator write access to push branches. Merges to `develop` auto-deploy (GitHub Actions → SSH) to **dev.cofind.dev** — same Lightsail box, separate service (:8080) and separate database, fronted by its own CloudFront distribution + cert. **Identity flows prod → dev** (users table synced on every dev deploy) so any registered founder logs into dev with their prod credentials; content never flows either direction. `main` moves only by PR and auto-deploys to production. The dev UI wears an amber badge.
+**Why:** The users are technical founders — the wall between "user" and "builder" is artificial here, and "the room builds the room" is the most on-thesis growth loop available. Fork-PRs are the standard open-source mechanism precisely because they need no trust up front; deploy secrets never reach fork-triggered workflows, and a human merge gates everything that reaches dev.
+**Consequence / risk noted:** dev holds synced password hashes, so a malicious merged contribution could touch them — mitigated by maintainer review before merge and by the trusted-circle scale. Revisit (separate auth, scrubbed sync) if the contributor pool outgrows the room.
+
 ---
 
 ## 2. Stack (defaults — challenge freely)

@@ -1,0 +1,24 @@
+name: Deploy production
+
+# Merges into main go live on https://cofind.dev automatically.
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh && echo "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new ec2-user@"$HOST" \
+            'bash /opt/cofind/deploy/remote-deploy.sh prod'

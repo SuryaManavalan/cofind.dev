@@ -47,6 +47,10 @@ Production-ish: `npm run build && npm start` — the server serves the built web
 
 Env vars: `PORT` (default 8787), `COFIND_DB_PATH` (default `server/data/cofind.db`), `COFIND_INVITE_CODE`.
 
+## Contributing — the room builds the room
+
+COfind is built by its members. Fork → PR into `develop` → merge auto-deploys to [dev.cofind.dev](https://dev.cofind.dev) (your prod login works there; amber badge, throwaway data). Proven changes get promoted `develop → main`, which auto-deploys to production. See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## Connect your agent
 
 **claude.ai / Claude apps (OAuth, ADR-019):** Settings → Connectors → Add custom connector → name it and enter `https://cofind.dev/mcp`. Leave the Advanced fields empty — Claude discovers COfind's authorization server, registers itself, and sends you to COfind's consent page to log in and approve. Connectors added on web sync to Claude mobile.

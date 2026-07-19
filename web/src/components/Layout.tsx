@@ -9,6 +9,9 @@ import Avatar from "./Avatar";
 import Settings from "./Settings";
 import CommandPalette from "./CommandPalette";
 
+// The dev environment (dev.cofind.dev) wears a badge so nobody mistakes it for prod.
+const IS_DEV_ENV = typeof location !== "undefined" && location.hostname.startsWith("dev.");
+
 const ONLINE_WINDOW_MS = 5 * 60 * 1000;
 
 function isOnline(lastActive: number | null): boolean {
@@ -176,7 +179,14 @@ export default function Layout({
         <div className="flex items-center gap-2.5 px-2 py-1.5">
           <img src="/icon.svg" alt="" className="size-8 rounded-lg" />
           <div className="leading-tight">
-            <p className="font-semibold tracking-tight">COfind</p>
+            <p className="flex items-center gap-1.5 font-semibold tracking-tight">
+              COfind
+              {IS_DEV_ENV && (
+                <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-amber-500">
+                  dev
+                </span>
+              )}
+            </p>
             <p className="text-[11px] leading-tight text-muted-foreground">Small co spaces to found in public</p>
           </div>
         </div>
@@ -232,6 +242,11 @@ export default function Layout({
             <div className="flex items-center gap-2">
               <img src="/icon.svg" alt="" className="size-7 rounded-lg" />
               <span className="font-semibold tracking-tight">COfind</span>
+              {IS_DEV_ENV && (
+                <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-amber-500">
+                  dev
+                </span>
+              )}
             </div>
             <Button variant="ghost" size="icon-sm" onClick={() => setShowSettings(true)} title="Settings">
               <SettingsIcon />
