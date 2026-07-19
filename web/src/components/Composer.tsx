@@ -266,11 +266,17 @@ export default function Composer({
             onBlur={() => setTimeout(() => setMention(null), 150)}
             rows={1}
             placeholder={placeholder}
-            className="min-h-9 w-full resize-none rounded-xl border border-input bg-transparent px-3.5 py-2 text-[15px] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="min-h-10 w-full resize-none rounded-full border border-input bg-transparent px-4 py-2.5 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:min-h-9 sm:rounded-xl sm:px-3.5 sm:py-2 sm:text-[15px]"
           />
         </div>
-        <Button onClick={submit} disabled={!body.trim() || sending} size="icon" className="rounded-xl" title="Post (⌘↵)">
-          <Send />
+        <Button
+          onClick={submit}
+          disabled={!body.trim() || sending}
+          size="icon"
+          className="size-10 shrink-0 rounded-full bg-brand text-white shadow-sm transition-all hover:bg-brand/90 disabled:bg-secondary disabled:text-muted-foreground sm:size-9"
+          title="Post (⌘↵)"
+        >
+          <Send className="-ml-px mt-px" />
         </Button>
       </div>
 
