@@ -123,7 +123,8 @@ function MarketCard({ m, onTraded }: { m: MarketDto; onTraded: (updated: MarketD
             )}
           </div>
         </div>
-        {!settled && (
+        {!settled && m.insider && <span className="shrink-0 text-[10px] italic text-muted-foreground">your line</span>}
+        {!settled && !m.insider && (
           <div className="flex shrink-0 items-center gap-1.5">
             <div className="flex overflow-hidden rounded-full border">
               {(["yes", "no"] as const).map((sd) => (

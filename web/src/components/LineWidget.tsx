@@ -69,7 +69,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
   }, [line]);
 
   useEffect(() => {
-    if (!line || line.resolved_at) return;
+    if (!line || line.resolved_at || line.insider) return;
     const t = setTimeout(() => {
       api.marketQuote(line.id, side, spend).then((q) => setPreview({ shares: q.shares, price_after: q.price_after })).catch(() => {});
     }, 150);
@@ -185,6 +185,10 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
         line.my.payout ? (
           <p className="mt-2 text-xs font-medium text-emerald-500">🎆 Your position paid out +{line.my.payout} conviction</p>
         ) : null
+      ) : line.insider ? (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          This is your line — you can settle it, so you can't trade it. Post stops to move your price; ship to close it.
+        </p>
       ) : (
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
           <div className="flex overflow-hidden rounded-full border">
@@ -217,7 +221,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
           </Button>
           {preview && (
             <span className="text-[10px] text-muted-foreground">
-              → {preview.shares.toFixed(1)} shares · line moves to {(preview.price_after * 100).toFixed(0)}%
+              → pays {Math.round(preview.shares * 10)} if {side.toUpperCase()} · line moves to {(preview.price_after * 100).toFixed(0)}%
             </span>
           )}
         </div>

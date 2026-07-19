@@ -111,6 +111,7 @@ export interface MarketDto {
   move_24h: number;
   resolved_at: number | null;
   outcome: "yes" | "no" | null;
+  insider: boolean;
   my: { yes_shares: number; no_shares: number; cost_basis: number; payout: number | null };
   book: { handle: string; display_name: string; yes_shares: number; no_shares: number }[];
 }

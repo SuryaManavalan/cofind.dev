@@ -259,7 +259,7 @@ export function createPost(
   attachTracks(id, authorId, body, renderMode, trackSlugs);
   // conviction: a stop on a track earns more than a loose post (ADR-023)
   const onTrack = db.prepare("SELECT 1 FROM post_tracks WHERE post_id = ? LIMIT 1").get(id);
-  market.award(authorId, onTrack ? 5 : 2, onTrack ? "stop" : "post", id);
+  market.awardPostingCapped(authorId, !!onTrack, id);
   return { post_id: id };
 }
 
@@ -324,7 +324,8 @@ export function react(userId: string, targetId: string, reaction: string): { ok:
   const authorRow = db.prepare(`SELECT author_id FROM ${targetType === "post" ? "posts" : "replies"} WHERE id = ?`).get(targetId) as
     | { author_id: string }
     | undefined;
-  if (authorRow && authorRow.author_id !== userId) market.award(authorRow.author_id, 3, "reaction", targetId);
+  // once per (target, reactor) ever — extra emojis and re-toggles pay nothing (audit E3)
+  if (authorRow && authorRow.author_id !== userId) market.awardReactionOnce(authorRow.author_id, targetId, userId);
   return { ok: true, added: true };
 }
 
@@ -628,8 +629,8 @@ export function shipTrack(userId: string, slug: string, ship: boolean): TrackSum
   const shippedAt = ship ? Date.now() : null;
   db.prepare("UPDATE tracks SET shipped_at = ? WHERE id = ?").run(shippedAt, row.id);
   if (ship) {
-    for (const c of market.shipContributors(row.id)) market.award(c.id, 50, "ship", row.id);
-    market.resolveLineForShip(row.id);
+    market.awardShipOnce(row.id);
+    market.resolveLineForShip(row.id, userId);
   }
   return trackSummary({ ...row, shipped_at: shippedAt });
 }

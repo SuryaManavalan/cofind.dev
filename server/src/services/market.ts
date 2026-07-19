@@ -53,6 +53,38 @@ export function wallet(userId: string): { balance: number; recent: { delta: numb
   };
 }
 
+// --- bounded earning (audit E2-E4): every faucet is capped per day or per event ---
+
+const DAILY_STOP_CAP = 4; // first 4 stops/day pay +5
+const DAILY_POST_CAP = 5; // first 5 plain posts/day pay +2
+
+export function awardPostingCapped(userId: string, onTrack: boolean, postId: string): void {
+  const reason = onTrack ? "stop" : "post";
+  const cap = onTrack ? DAILY_STOP_CAP : DAILY_POST_CAP;
+  const dayStart = new Date().setUTCHours(0, 0, 0, 0);
+  const today = (
+    db.prepare("SELECT COUNT(*) AS n FROM ledger WHERE user_id = ? AND reason = ? AND created_at >= ?").get(userId, reason, dayStart) as {
+      n: number;
+    }
+  ).n;
+  if (today < cap) award(userId, onTrack ? 5 : 2, reason, postId);
+}
+
+// +3 to the author, once per (target, reactor) pair ever — keyed in the ledger
+export function awardReactionOnce(authorId: string, targetId: string, reactorId: string): void {
+  const ref = `${targetId}:${reactorId}`;
+  const already = db.prepare("SELECT 1 FROM ledger WHERE user_id = ? AND reason = 'reaction' AND ref_id = ? LIMIT 1").get(authorId, ref);
+  if (!already) award(authorId, 3, "reaction", ref);
+}
+
+// +50 per contributor, once per (user, track) ever — reopen-ship pays nothing (audit E2)
+export function awardShipOnce(trackId: string): void {
+  for (const c of shipContributors(trackId)) {
+    const already = db.prepare("SELECT 1 FROM ledger WHERE user_id = ? AND reason = 'ship' AND ref_id = ? LIMIT 1").get(c.id, trackId);
+    if (!already) award(c.id, 50, "ship", trackId);
+  }
+}
+
 // --- LMSR core ---
 
 function cost(qYes: number, qNo: number): number {
@@ -116,8 +148,20 @@ export interface MarketDto {
   move_24h: number;
   resolved_at: number | null;
   outcome: "yes" | "no" | null;
+  insider: boolean;
   my: { yes_shares: number; no_shares: number; cost_basis: number; payout: number | null };
   book: { handle: string; display_name: string; yes_shares: number; no_shares: number }[];
+}
+
+// The insider rule (audit E1): you cannot trade a line you can settle.
+// Owner on personal tracks; any contributor on communal tracks.
+export function hasShipRights(trackId: string, userId: string): boolean {
+  const t = db.prepare("SELECT owner_id FROM tracks WHERE id = ?").get(trackId) as { owner_id: string | null } | undefined;
+  if (!t) return false;
+  if (t.owner_id) return t.owner_id === userId;
+  return !!db
+    .prepare("SELECT 1 FROM post_tracks pt JOIN posts p ON p.id = pt.post_id WHERE pt.track_id = ? AND p.author_id = ? LIMIT 1")
+    .get(trackId, userId);
 }
 
 function getMarketRow(id: string): MarketRow {
@@ -128,17 +172,28 @@ function getMarketRow(id: string): MarketRow {
 
 // Lazy objective resolution: past-target unshipped lines settle NO the next
 // time anyone looks. Shipping settles YES via the shipTrack hook.
-function maybeResolve(row: MarketRow): MarketRow {
+function maybeResolve(row: MarketRow, shipperId?: string): MarketRow {
   if (row.resolved_at) return row;
   const shipped = (db.prepare("SELECT shipped_at FROM tracks WHERE id = ?").get(row.track_id) as { shipped_at: number | null }).shipped_at;
-  if (shipped && shipped <= row.target_at) return settle(row, "yes");
+  if (shipped && shipped <= row.target_at) return settle(row, "yes", shipperId);
   if (Date.now() > row.target_at) return settle(row, "no");
   return row;
 }
 
-function settle(row: MarketRow, outcome: "yes" | "no"): MarketRow {
+function settle(row: MarketRow, outcome: "yes" | "no", voidUserId?: string): MarketRow {
   const now = Date.now();
   db.prepare("UPDATE markets SET resolved_at = ?, outcome = ? WHERE id = ? AND resolved_at IS NULL").run(now, outcome, row.id);
+  // The shipper's hands are clean (audit E6): whoever triggers settlement
+  // can't collect on it — their position is voided, cost basis refunded.
+  if (voidUserId) {
+    const pos = db.prepare("SELECT cost_basis, yes_shares, no_shares FROM positions WHERE market_id = ? AND user_id = ?").get(row.id, voidUserId) as
+      | { cost_basis: number; yes_shares: number; no_shares: number }
+      | undefined;
+    if (pos && (pos.yes_shares > 0.001 || pos.no_shares > 0.001)) {
+      db.prepare("UPDATE positions SET yes_shares = 0, no_shares = 0, cost_basis = 0 WHERE market_id = ? AND user_id = ?").run(row.id, voidUserId);
+      if (pos.cost_basis > 0) award(voidUserId, pos.cost_basis, "void", row.id);
+    }
+  }
   const holders = db.prepare("SELECT user_id, yes_shares, no_shares FROM positions WHERE market_id = ?").all(row.id) as {
     user_id: string;
     yes_shares: number;
@@ -151,9 +206,9 @@ function settle(row: MarketRow, outcome: "yes" | "no"): MarketRow {
   return { ...row, resolved_at: now, outcome };
 }
 
-export function resolveLineForShip(trackId: string): void {
+export function resolveLineForShip(trackId: string, shipperId: string): void {
   const row = db.prepare("SELECT * FROM markets WHERE track_id = ? AND resolved_at IS NULL").get(trackId) as MarketRow | undefined;
-  if (row) maybeResolve(row);
+  if (row) maybeResolve(row, shipperId);
 }
 
 function toDto(row: MarketRow, viewerId: string): MarketDto {
@@ -188,6 +243,7 @@ function toDto(row: MarketRow, viewerId: string): MarketDto {
     move_24h: prev ? p - prev.price_after : 0,
     resolved_at: row.resolved_at,
     outcome: row.outcome,
+    insider: hasShipRights(row.track_id, viewerId),
     my: { ...my, payout },
     book,
   };
@@ -208,7 +264,8 @@ export function openLine(userId: string, slug: string, targetAt: number): Market
   }
   const existing = db.prepare("SELECT id FROM markets WHERE track_id = ? AND resolved_at IS NULL").get(track.id);
   if (existing) throw new ApiError(409, "This track already has an open line");
-  if (targetAt < Date.now() + 60 * 60 * 1000) throw new ApiError(400, "Target must be at least an hour out");
+  if (targetAt < Date.now() + 24 * 60 * 60 * 1000) throw new ApiError(400, "Target must be at least a day out");
+  if (targetAt > Date.now() + 90 * 24 * 60 * 60 * 1000) throw new ApiError(400, "Target must be within 90 days");
 
   const id = newId("mk");
   const question = `#${track.slug} ships by ${new Date(targetAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}?`;
@@ -236,6 +293,8 @@ export function trade(
 ): { market: MarketDto; shares: number; cost: number } {
   const row = maybeResolve(getMarketRow(marketId));
   if (row.resolved_at) throw new ApiError(409, "Market is settled — the line is closed");
+  if (hasShipRights(row.track_id, userId))
+    throw new ApiError(403, "You can settle this line, so you can't trade it — your deadline is your position");
 
   let shares: number;
   let costC: number; // conviction, positive = paid, negative = received
@@ -259,7 +318,7 @@ export function trade(
     const held = side === "yes" ? (pos?.yes_shares ?? 0) : (pos?.no_shares ?? 0);
     if (shares <= 0 || shares > held + 0.001) throw new ApiError(400, "You don't hold that many shares");
     shares = Math.min(shares, held);
-    costC = Math.round(tradeCost(row.q_yes, row.q_no, side, -shares)); // negative
+    costC = -Math.floor(-tradeCost(row.q_yes, row.q_no, side, -shares)); // negative; floors the refund
   }
 
   const signedShares = action === "buy" ? shares : -shares;
