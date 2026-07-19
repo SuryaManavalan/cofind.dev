@@ -26,5 +26,5 @@ if (existsSync(webDist)) {
 
 const port = Number(process.env.PORT ?? 8787);
 serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`COfind server listening on http://localhost:${info.port}`);
+  console.log(`Cofind server listening on http://localhost:${info.port}`);
 });

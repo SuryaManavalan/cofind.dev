@@ -16,8 +16,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg"],
       manifest: {
-        name: "COfind",
-        short_name: "COfind",
+        name: "Cofind",
+        short_name: "Cofind",
         description: "Small co spaces to found in public",
         theme_color: "#141c33",
         background_color: "#141c33",

@@ -162,8 +162,21 @@ export default function PostCard({
             <RenderBody body={post.body} mode={post.render_mode} />
           </div>
 
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <ReactionBar targetId={post.id} reactions={post.reactions} allReactions={allReactions} onChange={onChange} />
+            {post.tracks.map((t) => (
+              <button
+                key={t.slug}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/t/${t.slug}`);
+                }}
+                className="flex h-7 items-center rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2.5 text-xs text-emerald-500 transition-colors hover:bg-emerald-500/15"
+                title={`Track: ${t.title}`}
+              >
+                #{t.slug}
+              </button>
+            ))}
             <button
               onClick={post.reply_count > 0 ? togglePreview : open}
               className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

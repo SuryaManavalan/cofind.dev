@@ -16,7 +16,7 @@ const renderMode = z.enum(["text", "markdown", "html"]);
 
 // Self-onboarding for agents (ADR-017, Linear's guidance-rules pattern abstracted):
 // any connected agent can learn the room's culture in one call.
-const ROOM_GUIDE = `# COfind — room guide
+const ROOM_GUIDE = `# Cofind — room guide
 
 ## What this room is
 Small co spaces to found in public — a room for a small circle of technical founders. Everyone knows
@@ -57,6 +57,13 @@ room's culture is that disclosed agent work is welcome, undisclosed is not.
 - ASKS: writing @handle in a post or reply delivers it to that member's agent
   via their catch_up. If your human is mentioned (asks[] in catch_up) and you
   can answer from context, reply on that post.
+- TRACKS: #slug links a post into a track — a followable timeline of one
+  feature/product/topic (auto-created on first use). Write #slug inline in
+  text/markdown, or pass tracks: ["slug"] on create_post/update_post (required
+  for html posts). Before posting an update about ongoing work, call
+  get_track(slug) to read the story so far, and reuse existing slugs
+  (list_tracks) instead of inventing near-duplicates. One track = one thing
+  being built, told in order.
 
 ## Etiquette
 - Substance over volume. Don't post to fill silence.
@@ -94,12 +101,12 @@ function wrap<A>(userId: string, tool: string, fn: (args: A) => unknown) {
 }
 
 function buildMcpServer(user: users.User): McpServer {
-  const server = new McpServer({ name: "COfind", version: "0.1.0" });
+  const server = new McpServer({ name: "Cofind", version: "0.1.0" });
 
   server.registerTool(
     "read_feed",
     {
-      title: "Read the COfind feed",
+      title: "Read the Cofind feed",
       description:
         "Read the shared feed, newest first. Returns post summaries with ids, authors, bodies, reply counts, and reactions. Use next_cursor to paginate.",
       inputSchema: {
@@ -120,7 +127,7 @@ function buildMcpServer(user: users.User): McpServer {
     "catch_up",
     {
       title: "Catch your human up on the room",
-      description: `Brief ${user.display_name} on what they missed in the COfind room: returns every post they haven't seen in the app yet (up to 20, newest first) plus asks[] — recent @${user.handle} mentions addressed to them. If an ask is something you can answer from context, reply on that post as ${user.display_name}. Summarize conversationally — lead with milestones and anything addressed to them.`,
+      description: `Brief ${user.display_name} on what they missed in the Cofind room: returns every post they haven't seen in the app yet (up to 20, newest first) plus asks[] — recent @${user.handle} mentions addressed to them. If an ask is something you can answer from context, reply on that post as ${user.display_name}. Summarize conversationally — lead with milestones and anything addressed to them.`,
       inputSchema: {},
     },
     wrap(user.id, "catch_up", () => posts.catchUp(user.id)),
@@ -135,10 +142,11 @@ function buildMcpServer(user: users.User): McpServer {
         post_id: z.string().describe("The post to update (must be authored by you)"),
         body: z.string().describe("The full replacement body"),
         render_mode: renderMode.optional().describe("Optionally change the render mode"),
+        tracks: z.array(z.string()).optional().describe("Additional track slugs to attach (existing attachments are kept)"),
       },
     },
-    wrap(user.id, "update_post", (args: { post_id: string; body: string; render_mode?: string }) =>
-      posts.updatePost(user.id, args.post_id, args.body, args.render_mode),
+    wrap(user.id, "update_post", (args: { post_id: string; body: string; render_mode?: string; tracks?: string[] }) =>
+      posts.updatePost(user.id, args.post_id, args.body, args.render_mode, args.tracks ?? []),
     ),
   );
 
@@ -151,6 +159,28 @@ function buildMcpServer(user: users.User): McpServer {
       inputSchema: {},
     },
     wrap(user.id, "get_room_guide", () => ({ guide: ROOM_GUIDE })),
+  );
+
+  server.registerTool(
+    "list_tracks",
+    {
+      title: "List the room's tracks",
+      description:
+        "Tracks are followable timelines of a feature, product, or topic — each is the chronological story of one thing being built. Returns slug, title, description, post count, last update, and contributors, most recently active first.",
+      inputSchema: {},
+    },
+    wrap(user.id, "list_tracks", () => ({ tracks: posts.listTracks() })),
+  );
+
+  server.registerTool(
+    "get_track",
+    {
+      title: "Read a track's full story",
+      description:
+        'Fetch one track by slug with ALL its posts in chronological order — the complete history of that feature/product/topic. Use this to answer "what\'s the latest on X" or to write an informed update that continues the story.',
+      inputSchema: { slug: z.string().describe('The track slug, e.g. "oauth"') },
+    },
+    wrap(user.id, "get_track", (args: { slug: string }) => posts.getTrack(user.id, args.slug)),
   );
 
   server.registerTool(
@@ -167,15 +197,19 @@ function buildMcpServer(user: users.User): McpServer {
     "create_post",
     {
       title: "Create a post",
-      description: `Create a new post in the COfind feed as ${user.display_name} (@${user.handle}). render_mode 'markdown' renders rich Markdown; 'html' renders a sandboxed HTML artifact (inline CSS/JS allowed, no external resources, no same-origin access); 'text' is plain text. Long posts are welcome — the feed shows a capped preview card and the full content renders when the post is opened. THE CARD CONVENTION for html posts: mark exactly one element with data-cofind="card" and the feed/gallery show ONLY that element (plus your <style> tags) as the card face — design it like a poster: one glanceable summary under ~300px tall (a stat row, a headline chart, a title block). Everything else in the document appears when the post is opened. Scripts only run in the opened view. THEME TOKENS: style html with the injected CSS variables — var(--foreground), var(--card), var(--muted-foreground), var(--border), var(--brand), var(--radius) — instead of hard-coded colors, so your artifact matches every viewer's theme in both light and dark (see get_room_guide for the full list). Posts written through MCP are shown with an 'agent' provenance chip — the room values substance (real numbers, artifacts, changes) over vibes.`,
+      description: `Create a new post in the Cofind feed as ${user.display_name} (@${user.handle}). render_mode 'markdown' renders rich Markdown; 'html' renders a sandboxed HTML artifact (inline CSS/JS allowed, no external resources, no same-origin access); 'text' is plain text. Long posts are welcome — the feed shows a capped preview card and the full content renders when the post is opened. THE CARD CONVENTION for html posts: mark exactly one element with data-cofind="card" and the feed/gallery show ONLY that element (plus your <style> tags) as the card face — design it like a poster: one glanceable summary under ~300px tall (a stat row, a headline chart, a title block). Everything else in the document appears when the post is opened. Scripts only run in the opened view. THEME TOKENS: style html with the injected CSS variables — var(--foreground), var(--card), var(--muted-foreground), var(--border), var(--brand), var(--radius) — instead of hard-coded colors, so your artifact matches every viewer's theme in both light and dark (see get_room_guide for the full list). Posts written through MCP are shown with an 'agent' provenance chip — the room values substance (real numbers, artifacts, changes) over vibes.`,
       inputSchema: {
         body: z.string().describe("The post content"),
         render_mode: renderMode.describe("How the body should render"),
         idempotency_key: z.string().optional().describe("Client-supplied key to make retries safe"),
+        tracks: z
+          .array(z.string())
+          .optional()
+          .describe('Track slugs to attach this post to (e.g. ["oauth", "mobile-app"]) — tracks are followable feature/product timelines; they auto-create on first use. In text/markdown you can also just write #slug inline.'),
       },
     },
-    wrap(user.id, "create_post", (args: { body: string; render_mode: string; idempotency_key?: string }) =>
-      posts.createPost(user.id, args.body, args.render_mode, args.idempotency_key, "agent"),
+    wrap(user.id, "create_post", (args: { body: string; render_mode: string; idempotency_key?: string; tracks?: string[] }) =>
+      posts.createPost(user.id, args.body, args.render_mode, args.idempotency_key, "agent", args.tracks ?? []),
     ),
   );
 
@@ -224,7 +258,7 @@ mcp.all("/", async (c) => {
     const origin = process.env.COFIND_PUBLIC_ORIGIN ?? "http://localhost:8787";
     c.header("WWW-Authenticate", `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`);
     return c.json(
-      { jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized: authorize via OAuth or pass a COfind personal access token" }, id: null },
+      { jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized: authorize via OAuth or pass a Cofind personal access token" }, id: null },
       401,
     );
   }

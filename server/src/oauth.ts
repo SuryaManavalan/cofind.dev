@@ -27,7 +27,7 @@ const asMetadata = {
   grant_types_supported: ["authorization_code", "refresh_token"],
   code_challenge_methods_supported: ["S256"],
   token_endpoint_auth_methods_supported: ["none", "client_secret_post"],
-  scopes_supported: ["COfind"],
+  scopes_supported: ["Cofind"],
 };
 
 const resourceMetadata = {
@@ -115,7 +115,7 @@ function consentPage(client: string, params: AuthzParams, loggedInAs: string | n
     : `<input name="handle" placeholder="Handle" autocapitalize="none" required>
        <input name="password" type="password" placeholder="Password" required>`;
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Authorize · COfind</title><style>
+<title>Authorize · Cofind</title><style>
   :root { color-scheme: dark; }
   body { margin:0; min-height:100dvh; display:flex; align-items:center; justify-content:center;
          background:#141c33; color:#eff5fa; font-family: ui-sans-serif, system-ui, sans-serif; }
@@ -128,7 +128,7 @@ function consentPage(client: string, params: AuthzParams, loggedInAs: string | n
   button { flex:1; padding:9px 0; border-radius:9px; font-size:14px; font-weight:600; cursor:pointer; border:1px solid rgba(83,116,172,.42); }
   .approve { background:#eff5fa; color:#141c33; border:none; } .deny { background:transparent; color:#8bafd0; }
 </style></head><body><form class="card" method="post" action="/oauth/authorize">
-  <h1>Connect to COfind</h1>
+  <h1>Connect to Cofind</h1>
   <p><b style="color:#eff5fa">${esc(client)}</b> wants to read the room and post, reply, and react <b style="color:#eff5fa">as you</b>. Its writes are labeled with an agent chip.</p>
   ${error ? `<p class="err">${esc(error)}</p>` : ""}
   ${hidden}${login}
@@ -182,7 +182,7 @@ oauth.post("/oauth/authorize", async (c) => {
   const code = newSecret("cofind_code");
   db.prepare(
     "INSERT INTO oauth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, scope, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-  ).run(sha256(code), v.params.client_id, user.id, v.params.redirect_uri, v.params.code_challenge, v.params.scope ?? "COfind", Date.now() + CODE_TTL_MS, Date.now());
+  ).run(sha256(code), v.params.client_id, user.id, v.params.redirect_uri, v.params.code_challenge, v.params.scope ?? "Cofind", Date.now() + CODE_TTL_MS, Date.now());
   redirect.searchParams.set("code", code);
   return c.redirect(redirect.toString());
 });
@@ -201,7 +201,7 @@ function issueTokens(userId: string, clientId: string, scope: string | null) {
     token_type: "Bearer",
     expires_in: Math.floor(ACCESS_TTL_MS / 1000),
     refresh_token: refresh,
-    scope: scope ?? "COfind",
+    scope: scope ?? "Cofind",
   };
 }
 

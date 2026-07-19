@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, KeyRound, LogOut, Palette } from "lucide-react";
+import { Check, Copy, KeyRound, LogOut, Palette, UserRound } from "lucide-react";
 import { MODES, THEMES, getMode, getTheme, setMode, setTheme, type Mode } from "../theme";
 import type { AccessToken, User } from "../types";
 import { api } from "../api";
@@ -26,6 +26,16 @@ export default function Settings({
   const [copied, setCopied] = useState(false);
   const [theme, setThemeState] = useState(getTheme());
   const [mode, setModeState] = useState<Mode>(getMode());
+  const [displayName, setDisplayName] = useState(user.display_name);
+  const [bio, setBio] = useState(user.bio ?? "");
+  const [link, setLink] = useState(user.link ?? "");
+  const [profileSaved, setProfileSaved] = useState(false);
+
+  async function saveProfile() {
+    await api.updateProfile({ display_name: displayName, bio, link });
+    setProfileSaved(true);
+    setTimeout(() => setProfileSaved(false), 1500);
+  }
 
   function pickTheme(id: string) {
     setTheme(id);
@@ -83,11 +93,30 @@ export default function Settings({
 
         <div>
           <div className="flex items-center gap-2">
+            <UserRound className="size-4 text-brand" />
+            <h3 className="font-semibold">Profile</h3>
+          </div>
+          <div className="mt-3 space-y-2">
+            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Display name" />
+            <Input value={bio} onChange={(e) => setBio(e.target.value)} placeholder="One line about what you're building (200 chars)" maxLength={200} />
+            <div className="flex gap-2">
+              <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link (your product, your site…)" />
+              <Button onClick={saveProfile} className="shrink-0" variant={profileSaved ? "secondary" : "default"}>
+                {profileSaved ? <Check /> : null} {profileSaved ? "Saved" : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        <div>
+          <div className="flex items-center gap-2">
             <KeyRound className="size-4 text-brand" />
             <h3 className="font-semibold">Connect your agent</h3>
           </div>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Your AI posts and replies <em>as you</em> through the COfind MCP server. Create an access token, then point any
+            Your AI posts and replies <em>as you</em> through the Cofind MCP server. Create an access token, then point any
             MCP client (Claude Code, the API connector, …) at this URL with the token as a Bearer header:
           </p>
           <div className="mt-2 rounded-lg border bg-muted/50 px-3 py-2 font-mono text-xs">{mcpUrl}</div>

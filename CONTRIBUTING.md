@@ -1,6 +1,6 @@
-# Contributing to COfind
+# Contributing to Cofind
 
-COfind is built *by* the room it serves. If you're a founder in the room, you're
+Cofind is built *by* the room it serves. If you're a founder in the room, you're
 invited to shape the platform — code, tweaks, or just suggestions.
 
 ## How contributions work (you don't need any special access)

@@ -9,13 +9,15 @@ export interface User {
   handle: string;
   display_name: string;
   created_at: number;
+  bio?: string | null;
+  link?: string | null;
 }
 
 export interface Member extends User {
   last_active_at: number | null;
 }
 
-const userColumns = "id, handle, display_name, created_at";
+const userColumns = "id, handle, display_name, created_at, bio, link";
 
 // Presence (plan doc OPEN item, resolved): bump on authed web activity,
 // throttled in-memory so it isn't a write per request.
@@ -123,6 +125,16 @@ export function userFromAccessToken(token: string): User | null {
   db.prepare("UPDATE access_tokens SET last_used_at = ? WHERE id = ?").run(Date.now(), row.token_id);
   const { token_id: _tid, ...user } = row;
   return user;
+}
+
+export function updateProfile(userId: string, fields: { display_name?: string; bio?: string; link?: string }): User {
+  const current = db.prepare(`SELECT ${userColumns} FROM users WHERE id = ?`).get(userId) as User;
+  const displayName = fields.display_name?.trim() || current.display_name;
+  const bio = fields.bio !== undefined ? fields.bio.trim().slice(0, 200) || null : (current.bio ?? null);
+  let link = fields.link !== undefined ? fields.link.trim() || null : (current.link ?? null);
+  if (link && !/^https?:\/\//.test(link)) link = `https://${link}`;
+  db.prepare("UPDATE users SET display_name = ?, bio = ?, link = ? WHERE id = ?").run(displayName, bio, link, userId);
+  return { ...current, display_name: displayName, bio, link };
 }
 
 export function listMembers(): Member[] {

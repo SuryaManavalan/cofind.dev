@@ -1,9 +1,9 @@
-# COfind — Plan & Intent
+# Cofind — Plan & Intent
 
 > **Status:** Living doc. This is the "why" and the "what." Decisions here are directional, not frozen. Where something is genuinely undecided it's marked **OPEN**. Companion doc: `cofind-architecture-and-decisions.md` (the "how").
 >
 > **Domain:** cofind.dev
-> **Brand (2026-07-18):** COfind — "Small co spaces to found in public"
+> **Brand (2026-07-18):** Cofind — "Small co spaces to found in public"
 > **Audience today:** the author + a handful of friends founding startups.
 > **Last updated:** 2026-07-18
 
@@ -63,31 +63,31 @@ Posts are short-form by default (micro-posts), but the *render* can be expressiv
 ## 6. Agent-native flows
 
 ### Posting via agent
-Your agent calls the COfind MCP `create_post` tool and writes on your behalf, as you. The agent is great at producing the exact rich MD/HTML formats that make posts expressive.
+Your agent calls the Cofind MCP `create_post` tool and writes on your behalf, as you. The agent is great at producing the exact rich MD/HTML formats that make posts expressive.
 
 ### Replying via agent (the marquee mobile flow)
 On mobile, a reply can be typed by hand (Twitter-style) **or** handed to your AI:
 
 1. Tap **"Reply with your agent."**
-2. COfind hands off to the Claude (or ChatGPT) app with a pre-filled prompt carrying the **post ID** — via the iOS Share sheet or a bundled Shortcut (`shortcuts://run-shortcut?...`). *Not* clipboard.
-3. Your agent — already OAuth'd to the COfind MCP as you — calls `reply(post_id, ...)`.
-4. The write lands on COfind's backend through MCP. COfind's feed reflects it on next sync.
+2. Cofind hands off to the Claude (or ChatGPT) app with a pre-filled prompt carrying the **post ID** — via the iOS Share sheet or a bundled Shortcut (`shortcuts://run-shortcut?...`). *Not* clipboard.
+3. Your agent — already OAuth'd to the Cofind MCP as you — calls `reply(post_id, ...)`.
+4. The write lands on Cofind's backend through MCP. Cofind's feed reflects it on next sync.
 
-**Key architectural payoff:** the handoff is *one-directional*. COfind only needs to get context *into* the agent; the reply completes server-side via MCP. We never try to catch a return value back from the intent — the fragile part of iOS handoffs — so we sidestep it entirely.
+**Key architectural payoff:** the handoff is *one-directional*. Cofind only needs to get context *into* the agent; the reply completes server-side via MCP. We never try to catch a return value back from the intent — the fragile part of iOS handoffs — so we sidestep it entirely.
 
 ## 7. Platform intent
 
 - **v0: one responsive web app that is also an installable PWA.** This *is* the "mobile app" for now. Installable, push-capable, and able to trigger the Share sheet / Shortcut handoff to the agent apps.
 - **Go native (Expo/RN) only when a concrete pain pulls us there**, specifically:
   - iOS web-push reliability is measurably costing re-engagement, **or**
-  - we want COfind itself to be a first-class iOS **App Intent** target ("Reply with COfind" in Siri/Spotlight/Share).
+  - we want Cofind itself to be a first-class iOS **App Intent** target ("Reply with Cofind" in Siri/Spotlight/Share).
 - "We grew" is *not* a trigger. A specific broken thing is.
 
 ## 8. Known constraints from the agent ecosystem (as of 2026-07)
 
 These shape onboarding and are not things we control:
 
-- **Custom MCP connectors must be added once on the web** (claude.ai → Settings → Connectors), then sync to Claude mobile. So onboarding has a mandatory "connect COfind on the web, once" step. Bundle it with the Shortcut install.
+- **Custom MCP connectors must be added once on the web** (claude.ai → Settings → Connectors), then sync to Claude mobile. So onboarding has a mandatory "connect Cofind on the web, once" step. Bundle it with the Shortcut install.
 - **Custom remote-MCP connectors require a paid Claude plan** (Pro/Max/Team/Enterprise) and are still beta. The agent-reply feature is gated by the *user's* Claude subscription. Acceptable for a founder crowd; document it plainly.
 - **Agent replies spend the user's own Claude usage** and run on their default model. We don't control model choice or cost per reply.
 - **UNVERIFIED / must test:** whether an "Ask Claude" turn *triggered via Share sheet or Shortcut* runs with the user's MCP connectors active and will actually fire our `reply` tool. Handoff-in is supported; tool-fires-from-that-entry-point is not proven. See architecture doc for the de-risking test. Design a graceful fallback (button opens a normal Claude chat where the user taps send once).

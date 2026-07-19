@@ -36,6 +36,12 @@ export interface PostSummary {
   reply_count: number;
   reactions: ReactionSummary[];
   seen_by_me: boolean;
+  tracks: TrackRef[];
+}
+
+export interface TrackRef {
+  slug: string;
+  title: string;
 }
 
 export interface ReplyDto {
@@ -107,6 +113,11 @@ function toSummary(row: PostRow, viewerId: string): PostSummary {
     reply_count: row.reply_count,
     reactions: reactionSummaries("post", row.id, viewerId),
     seen_by_me: !!db.prepare("SELECT 1 FROM seen WHERE user_id = ? AND post_id = ?").get(viewerId, row.id),
+    tracks: db
+      .prepare(
+        "SELECT t.slug, t.title FROM post_tracks pt JOIN tracks t ON t.id = pt.track_id WHERE pt.post_id = ? ORDER BY pt.created_at",
+      )
+      .all(row.id) as TrackRef[],
   };
 }
 
@@ -213,6 +224,7 @@ export function createPost(
   renderMode: string,
   idempotencyKey?: string,
   via: Via = "web",
+  trackSlugs: string[] = [],
 ): { post_id: string } {
   validateBody(body);
   validateRenderMode(renderMode);
@@ -232,6 +244,7 @@ export function createPost(
     "INSERT INTO posts (id, author_id, body, render_mode, via, created_at, sort_key, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   ).run(id, authorId, body, renderMode, via, now, now, idempotencyKey ?? null);
   recordMentions("post", id, id, authorId, body);
+  attachTracks(id, authorId, body, renderMode, trackSlugs);
   return { post_id: id };
 }
 
@@ -367,6 +380,7 @@ export function updatePost(
   postId: string,
   body: string,
   renderMode?: string,
+  trackSlugs: string[] = [],
 ): { post_id: string; edited_at: number } {
   validateBody(body);
   const post = db.prepare("SELECT author_id, render_mode FROM posts WHERE id = ?").get(postId) as
@@ -380,5 +394,104 @@ export function updatePost(
   const now = Date.now();
   db.prepare("UPDATE posts SET body = ?, render_mode = ?, edited_at = ? WHERE id = ?").run(body, mode, now, postId);
   recordMentions("post", postId, postId, authorId, body);
+  attachTracks(postId, authorId, body, mode, trackSlugs);
   return { post_id: postId, edited_at: now };
+}
+
+// --- Tracks (ADR-021): followable timelines of a feature/product/topic ---
+
+const TRACK_INLINE_RE = /(?:^|[\s(])#([a-z][a-z0-9-]{1,40})/g;
+
+function slugTitle(slug: string): string {
+  return slug.replace(/-/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+function ensureTrack(slug: string, userId: string): string {
+  const existing = db.prepare("SELECT id FROM tracks WHERE slug = ?").get(slug) as { id: string } | undefined;
+  if (existing) return existing.id;
+  const id = newId("t");
+  db.prepare("INSERT INTO tracks (id, slug, title, created_by, created_at) VALUES (?, ?, ?, ?, ?)").run(
+    id,
+    slug,
+    slugTitle(slug),
+    userId,
+    Date.now(),
+  );
+  return id;
+}
+
+// Inline #slug works in text/markdown; html artifacts attach via the explicit
+// tracks param (MCP) since hashtags don't belong in markup.
+function attachTracks(postId: string, authorId: string, body: string, renderMode: string, explicit: string[]): void {
+  const slugs = new Set<string>();
+  for (const raw of explicit) {
+    const slug = raw.toLowerCase().replace(/^#/, "").trim();
+    if (/^[a-z][a-z0-9-]{1,40}$/.test(slug)) slugs.add(slug);
+  }
+  if (renderMode !== "html") {
+    for (const match of body.matchAll(TRACK_INLINE_RE)) {
+      if (match[1]) slugs.add(match[1].toLowerCase());
+    }
+  }
+  if (slugs.size === 0) return;
+  const now = Date.now();
+  for (const slug of slugs) {
+    const trackId = ensureTrack(slug, authorId);
+    db.prepare("INSERT OR IGNORE INTO post_tracks (post_id, track_id, created_at) VALUES (?, ?, ?)").run(postId, trackId, now);
+  }
+}
+
+export interface TrackSummary {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  created_at: number;
+  post_count: number;
+  last_post_at: number | null;
+  contributors: Author[];
+}
+
+function trackSummary(row: { id: string; slug: string; title: string; description: string | null; created_at: number }): TrackSummary {
+  const stats = db
+    .prepare(
+      `SELECT COUNT(*) AS n, MAX(p.created_at) AS last FROM post_tracks pt JOIN posts p ON p.id = pt.post_id WHERE pt.track_id = ?`,
+    )
+    .get(row.id) as { n: number; last: number | null };
+  const contributors = db
+    .prepare(
+      `SELECT DISTINCT u.id, u.handle, u.display_name FROM post_tracks pt
+       JOIN posts p ON p.id = pt.post_id JOIN users u ON u.id = p.author_id
+       WHERE pt.track_id = ? ORDER BY u.handle LIMIT 8`,
+    )
+    .all(row.id) as Author[];
+  return { ...row, post_count: stats.n, last_post_at: stats.last, contributors };
+}
+
+export function listTracks(): TrackSummary[] {
+  const rows = db.prepare("SELECT id, slug, title, description, created_at FROM tracks").all() as Parameters<typeof trackSummary>[0][];
+  return rows.map(trackSummary).sort((a, b) => (b.last_post_at ?? 0) - (a.last_post_at ?? 0));
+}
+
+// A track reads chronologically — it's the story of the thing being built.
+export function getTrack(viewerId: string, slug: string): { track: TrackSummary; posts: PostSummary[] } {
+  const row = db.prepare("SELECT id, slug, title, description, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
+    | Parameters<typeof trackSummary>[0]
+    | undefined;
+  if (!row) throw new ApiError(404, "Track not found");
+  const postRows = db
+    .prepare(`${POST_SELECT} JOIN post_tracks pt ON pt.post_id = p.id WHERE pt.track_id = ? ORDER BY p.created_at ASC`)
+    .all(row.id) as PostRow[];
+  return { track: trackSummary(row), posts: postRows.map((r) => toSummary(r, viewerId)) };
+}
+
+export function updateTrack(slug: string, fields: { title?: string; description?: string }): TrackSummary {
+  const row = db.prepare("SELECT id, slug, title, description, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
+    | Parameters<typeof trackSummary>[0]
+    | undefined;
+  if (!row) throw new ApiError(404, "Track not found");
+  const title = fields.title?.trim() || row.title;
+  const description = fields.description !== undefined ? fields.description.trim() || null : row.description;
+  db.prepare("UPDATE tracks SET title = ?, description = ? WHERE id = ?").run(title, description, row.id);
+  return trackSummary({ ...row, title, description });
 }
