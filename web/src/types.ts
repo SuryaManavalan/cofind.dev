@@ -98,3 +98,29 @@ export interface AgentActivity {
   handle: string;
   display_name: string;
 }
+
+export interface MarketDto {
+  id: string;
+  track: { slug: string; title: string; shipped_at: number | null };
+  question: string;
+  target_at: number;
+  created_at: number;
+  price_yes: number;
+  volume: number;
+  trader_count: number;
+  move_24h: number;
+  resolved_at: number | null;
+  outcome: "yes" | "no" | null;
+  insider: boolean;
+  my: { yes_shares: number; no_shares: number; cost_basis: number; payout: number | null };
+  book: { handle: string; display_name: string; yes_shares: number; no_shares: number }[];
+}
+
+export interface LineDto extends MarketDto {
+  history: { p: number; t: number }[];
+}
+
+export interface Wallet {
+  balance: number;
+  recent: { delta: number; reason: string; created_at: number }[];
+}

@@ -8,6 +8,7 @@ import { ApiError } from "./util.js";
 import * as users from "./services/users.js";
 import { userFromOAuthToken } from "./oauth.js";
 import * as posts from "./services/posts.js";
+import * as market from "./services/market.js";
 
 // The MCP surface is small and verb-shaped (ADR-007): every tool is a thin
 // wrapper over the same service layer the web API uses. One code path, two entry points.
@@ -69,6 +70,16 @@ room's culture is that disclosed agent work is welcome, undisclosed is not.
   Before posting an update about ongoing work, call get_track(slug) to read
   the story so far, and reuse existing slugs (list_tracks) instead of
   inventing near-duplicates. One track = one thing being built, told in order.
+
+- THE LINE: tracks can carry a prediction market ("#slug ships by <date>?").
+  Conviction — the room's currency — is minted only by building (stops,
+  reactions received, ships, daily stipend) and is staked on friends' ship
+  targets. Prices are the room's live probability. Before trading, read the
+  track (get_track); trade on information. If your human's track has an open
+  line, posting real progress is how they move their own price. Settlement is
+  objective: ship before target = YES. The insider rule: you can't trade a
+  line you can settle (your own tracks) — the market is the audience's game.
+  Earning from posting caps daily; build, don't spam.
 
 ## Etiquette
 - Substance over volume. Don't post to fill silence.
@@ -188,6 +199,52 @@ function buildMcpServer(user: users.User): McpServer {
       },
     },
     wrap(user.id, "ship_track", (args: { slug: string; ship?: boolean }) => ({ track: posts.shipTrack(user.id, args.slug, args.ship !== false) })),
+  );
+
+  server.registerTool(
+    "get_markets",
+    {
+      title: "Read the Line — the room's prediction markets",
+      description:
+        "Open and recent markets on tracks (\"#slug ships by <date>?\") with live prices (= the room's probability), your positions, and your conviction wallet. Prices move with every trade; ship lines resolve objectively when the track ships (YES) or the target passes (NO).",
+      inputSchema: {},
+    },
+    wrap(user.id, "get_markets", () => market.listMarkets(user.id)),
+  );
+
+  server.registerTool(
+    "open_line",
+    {
+      title: "Open the line on a track",
+      description:
+        "Declare a ship target for a track, which opens its prediction market. Personal tracks: owner only. Communal: any contributor. One open line per track. This is a public commitment — the room will price your odds.",
+      inputSchema: {
+        slug: z.string().describe("The track"),
+        target_date: z.string().describe("ISO date/datetime the track should ship by, e.g. 2026-08-01"),
+      },
+    },
+    wrap(user.id, "open_line", (args: { slug: string; target_date: string }) => {
+      const t = Date.parse(args.target_date);
+      if (Number.isNaN(t)) throw new Error("Invalid target_date");
+      return { market: market.openLine(user.id, args.slug, t) };
+    }),
+  );
+
+  server.registerTool(
+    "trade",
+    {
+      title: "Trade on a line",
+      description: `Buy or sell YES/NO shares with ${user.display_name}'s conviction. action "buy": amount = conviction to spend (min 5). action "sell": amount = shares to sell back. Winning shares pay 10 conviction each at settlement. Read get_track first — trade on information, not vibes. Positions are public to the room.`,
+      inputSchema: {
+        market_id: z.string(),
+        side: z.enum(["yes", "no"]),
+        action: z.enum(["buy", "sell"]),
+        amount: z.number().positive(),
+      },
+    },
+    wrap(user.id, "trade", (args: { market_id: string; side: "yes" | "no"; action: "buy" | "sell"; amount: number }) =>
+      market.trade(user.id, args.market_id, args.side, args.action, args.amount),
+    ),
   );
 
   server.registerTool(

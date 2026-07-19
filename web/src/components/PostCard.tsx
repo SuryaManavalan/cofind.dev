@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { MessageCircle, Plus } from "lucide-react";
 import type { PostSummary, ReactionSummary, Reply, TrackRef } from "../types";
 import { api } from "../api";
+import { burst } from "@/lib/juice";
 import { cn, timeAgo } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import Avatar from "./Avatar";
@@ -22,9 +23,11 @@ export function ReactionBar({
 }) {
   const [picking, setPicking] = useState(false);
 
-  async function toggle(emoji: string) {
+  async function toggle(emoji: string, e?: React.MouseEvent) {
     setPicking(false);
+    const adding = !reactions.find((r) => r.reaction === emoji)?.reacted_by_me;
     await api.react(targetId, emoji);
+    if (adding && e) burst(e.clientX, e.clientY, 10);
     onChange();
   }
 
@@ -33,7 +36,7 @@ export function ReactionBar({
       {reactions.map((r) => (
         <button
           key={r.reaction}
-          onClick={() => toggle(r.reaction)}
+          onClick={(e) => toggle(r.reaction, e)}
           className={cn(
             "flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] tabular-nums transition-colors",
             r.reacted_by_me
@@ -55,7 +58,7 @@ export function ReactionBar({
         {picking && (
           <div className="absolute bottom-9 left-0 z-10 flex gap-0.5 rounded-xl border bg-popover p-1 shadow-md animate-in fade-in-0 zoom-in-95">
             {allReactions.map((emoji) => (
-              <button key={emoji} onClick={() => toggle(emoji)} className="rounded-lg p-1.5 text-lg leading-none hover:bg-accent">
+              <button key={emoji} onClick={(e) => toggle(emoji, e)} className="rounded-lg p-1.5 text-lg leading-none hover:bg-accent">
                 {emoji}
               </button>
             ))}

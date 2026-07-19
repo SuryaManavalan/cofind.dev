@@ -172,6 +172,56 @@ addColumn("tracks", "shipped_at INTEGER");
 addColumn("users", "bio TEXT");
 addColumn("users", "link TEXT");
 
+// The Line (ADR-023): conviction ledger + LMSR prediction markets on tracks.
+db.exec(`
+CREATE TABLE IF NOT EXISTS ledger (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    TEXT NOT NULL REFERENCES users(id),
+  delta      INTEGER NOT NULL,
+  reason     TEXT NOT NULL,
+  ref_id     TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS markets (
+  id           TEXT PRIMARY KEY,
+  kind         TEXT NOT NULL CHECK (kind IN ('ship')),
+  track_id     TEXT NOT NULL REFERENCES tracks(id),
+  question     TEXT NOT NULL,
+  target_at    INTEGER NOT NULL,
+  b            REAL NOT NULL,
+  q_yes        REAL NOT NULL DEFAULT 0,
+  q_no         REAL NOT NULL DEFAULT 0,
+  created_by   TEXT NOT NULL REFERENCES users(id),
+  created_at   INTEGER NOT NULL,
+  resolved_at  INTEGER,
+  outcome      TEXT CHECK (outcome IN ('yes','no'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_markets_track_open ON markets (track_id) WHERE resolved_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS positions (
+  market_id  TEXT NOT NULL REFERENCES markets(id),
+  user_id    TEXT NOT NULL REFERENCES users(id),
+  yes_shares REAL NOT NULL DEFAULT 0,
+  no_shares  REAL NOT NULL DEFAULT 0,
+  cost_basis INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (market_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS trades (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  market_id   TEXT NOT NULL REFERENCES markets(id),
+  user_id     TEXT NOT NULL REFERENCES users(id),
+  side        TEXT NOT NULL CHECK (side IN ('yes','no')),
+  shares      REAL NOT NULL,
+  cost        INTEGER NOT NULL,
+  price_after REAL NOT NULL,
+  created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_trades_market ON trades (market_id, created_at);
+`);
+
 // Asks (ADR-017): @handle mentions, delivered to the mentioned member's agent via catch_up.
 db.exec(`
 CREATE TABLE IF NOT EXISTS mentions (
