@@ -91,7 +91,9 @@ export default function PriceChart({
   return (
     <div
       ref={wrapRef}
+      data-no-swipe
       className="relative w-full select-none"
+      style={{ touchAction: "pan-y" }}
       onMouseMove={(e) => locate(e.clientX)}
       onMouseLeave={() => setHover(null)}
       onTouchStart={(e) => e.touches[0] && locate(e.touches[0].clientX)}
