@@ -44,12 +44,43 @@ export function maybeDailyStipend(userId: string): void {
   if (!already) award(userId, DAILY_STIPEND, "daily");
 }
 
-export function wallet(userId: string): { balance: number; recent: { delta: number; reason: string; created_at: number }[] } {
+export function wallet(userId: string): {
+  balance: number;
+  at_stake: number;
+  portfolio: number;
+  earned_total: number;
+  recent: { delta: number; reason: string; created_at: number }[];
+  history: { t: number; v: number }[];
+} {
+  const bal = balance(userId);
+  // mark-to-market: what open positions would pay at today's prices
+  const open = db
+    .prepare(
+      `SELECT m.q_yes, m.q_no, p.yes_shares, p.no_shares FROM positions p JOIN markets m ON m.id = p.market_id
+       WHERE p.user_id = ? AND m.resolved_at IS NULL AND (p.yes_shares > 0.001 OR p.no_shares > 0.001)`,
+    )
+    .all(userId) as { q_yes: number; q_no: number; yes_shares: number; no_shares: number }[];
+  const atStake = open.reduce((sum, r) => {
+    const py = priceYes(r.q_yes, r.q_no);
+    return sum + r.yes_shares * py * SHARE_PAYOUT + r.no_shares * (1 - py) * SHARE_PAYOUT;
+  }, 0);
+  const rows = db
+    .prepare("SELECT delta, reason, created_at FROM ledger WHERE user_id = ? ORDER BY id ASC")
+    .all(userId) as { delta: number; reason: string; created_at: number }[];
+  // balance over time — every ledger entry is a step
+  let running = 0;
+  const history = rows.map((r) => {
+    running += r.delta;
+    return { t: r.created_at, v: running };
+  });
+  const earnedTotal = rows.filter((r) => r.delta > 0 && r.reason !== "trade_sell" && r.reason !== "void").reduce((a, r) => a + r.delta, 0);
   return {
-    balance: balance(userId),
-    recent: db
-      .prepare("SELECT delta, reason, created_at FROM ledger WHERE user_id = ? ORDER BY id DESC LIMIT 15")
-      .all(userId) as { delta: number; reason: string; created_at: number }[],
+    balance: bal,
+    at_stake: Math.round(atStake),
+    portfolio: bal + Math.round(atStake),
+    earned_total: earnedTotal,
+    recent: rows.slice(-15).reverse(),
+    history,
   };
 }
 

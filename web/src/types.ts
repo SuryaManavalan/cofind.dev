@@ -140,5 +140,9 @@ export interface FloorMarket extends MarketDto {
 
 export interface Wallet {
   balance: number;
+  at_stake: number;
+  portfolio: number;
+  earned_total: number;
   recent: { delta: number; reason: string; created_at: number }[];
+  history: { t: number; v: number }[];
 }

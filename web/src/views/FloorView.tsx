@@ -48,22 +48,95 @@ function Tape({ events }: { events: TapeEvent[] }) {
   );
 }
 
+// Balance-over-time: step chart of the ledger, adaptive domain, crosshair.
+function CapitalChart({ history }: { history: { t: number; v: number }[] }) {
+  const [hover, setHover] = useState<{ x: number; idx: number } | null>(null);
+  const W = 600;
+  const H = 84;
+  const pts = history.length > 0 ? [...history, { t: Date.now(), v: history[history.length - 1]!.v }] : [];
+  if (pts.length < 2) return null;
+  const t0 = pts[0]!.t;
+  const span = Math.max(pts[pts.length - 1]!.t - t0, 1);
+  const vs = pts.map((d) => d.v);
+  const lo = Math.min(...vs, 0);
+  const hi = Math.max(...vs) * 1.08 + 1;
+  const x = (t: number) => ((t - t0) / span) * W;
+  const y = (v: number) => 4 + (1 - (v - lo) / (hi - lo)) * (H - 8);
+  let d = `M ${x(pts[0]!.t).toFixed(1)} ${y(pts[0]!.v).toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) d += ` H ${x(pts[i]!.t).toFixed(1)} V ${y(pts[i]!.v).toFixed(1)}`;
+  const hoverPt = hover ? pts[hover.idx] : null;
+  function locate(clientX: number, el: HTMLElement) {
+    const rect = el.getBoundingClientRect();
+    const px = ((clientX - rect.left) / rect.width) * W;
+    let idx = 0;
+    for (let i = 0; i < pts.length; i++) if (x(pts[i]!.t) <= px) idx = i;
+    setHover({ x: Math.max(0, Math.min(px, W)), idx });
+  }
+  return (
+    <div
+      data-no-swipe
+      className="relative mt-2 select-none text-foreground"
+      style={{ touchAction: "pan-y" }}
+      onMouseMove={(e) => locate(e.clientX, e.currentTarget)}
+      onMouseLeave={() => setHover(null)}
+      onTouchStart={(e) => e.touches[0] && locate(e.touches[0].clientX, e.currentTarget)}
+      onTouchMove={(e) => e.touches[0] && locate(e.touches[0].clientX, e.currentTarget)}
+      onTouchEnd={() => setHover(null)}
+    >
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="capg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--brand)" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="var(--brand)" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <path d={`${d} L ${W} ${H} L 0 ${H} Z`} fill="url(#capg)" />
+        <path d={d} fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinejoin="round" pathLength={1} className="chart-draw" />
+        <circle cx={W} cy={y(pts[pts.length - 1]!.v)} r="3" fill="var(--brand)">
+          <animate attributeName="opacity" values="1;0.35;1" dur="1.8s" repeatCount="indefinite" />
+        </circle>
+        {hover && hoverPt && (
+          <line x1={hover.x} x2={hover.x} y1="0" y2={H} stroke="currentColor" strokeOpacity="0.35" strokeWidth="1" strokeDasharray="3 3" />
+        )}
+      </svg>
+      {hover && hoverPt && (
+        <div
+          className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md border bg-popover px-2 py-0.5 text-center shadow-md"
+          style={{ left: `${(hover.x / W) * 100}%` }}
+        >
+          <div className="text-xs font-bold tabular-nums text-brand">{hoverPt.v}</div>
+          <div className="text-[9px] text-muted-foreground">{timeAgo(hoverPt.t)}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WalletCard({ wallet }: { wallet: Wallet }) {
-  const bal = useSlotNumber(wallet.balance, { duration: 900 });
+  const port = useSlotNumber(wallet.portfolio, { duration: 900 });
   return (
     <div className="border-b px-4 py-4 sm:px-6">
       <div className="flex items-end justify-between gap-4">
         <div>
           <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-extrabold tabular-nums tracking-tight text-brand">{bal}</span>
-            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">conviction</span>
+            <span className="text-4xl font-extrabold tabular-nums tracking-tight text-brand">{port}</span>
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">portfolio</span>
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Minted only by building — posting stops, getting reactions, shipping. Stake it on the lines below.
-          </p>
+          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-muted-foreground">
+            <span>
+              <b className="tabular-nums text-foreground">{wallet.balance}</b> liquid
+            </span>
+            <span>
+              <b className="tabular-nums text-foreground">{wallet.at_stake}</b> at stake
+            </span>
+            <span>
+              <b className="tabular-nums text-emerald-500">{wallet.earned_total}</b> minted all-time
+            </span>
+          </div>
         </div>
         <Coins className="hidden size-8 text-brand/40 sm:block" />
       </div>
+      <CapitalChart history={wallet.history} />
       {wallet.recent.length > 0 && (
         <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
           {wallet.recent.slice(0, 6).map((r, i) => (
