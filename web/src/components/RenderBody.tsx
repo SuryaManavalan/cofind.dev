@@ -235,6 +235,8 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
   const cardHtml = variant === "preview" ? extractCard(body) : null;
   const frameBody = cardHtml ?? body;
   const maxHeight = variant === "preview" ? PREVIEW_FRAME_MAX : FULL_FRAME_MAX;
+  // Card faces are posters: never show internal scrollbars in the feed/gallery.
+  const previewCss = variant === "preview" ? "<style>html,body{overflow:hidden}</style>" : "";
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
@@ -255,7 +257,7 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
         // Hostile by default (ADR-004): scripts allowed for the "little artifact"
         // case, but no same-origin, no top-navigation, no forms, no popups.
         sandbox="allow-scripts"
-        srcDoc={`${FRAME_PRELUDE}<style>${themeCss}</style>${frameBody}`}
+        srcDoc={`${FRAME_PRELUDE}<style>${themeCss}</style>${previewCss}${frameBody}`}
         className="w-full rounded-lg border bg-muted/40 transition-[height]"
         style={{ height: Math.min(contentHeight, maxHeight) }}
         title="post content"
@@ -266,10 +268,17 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
         // (scripts, scrolling the artifact) belongs to the opened view.
         <div className="absolute inset-0 cursor-pointer" />
       )}
-      {variant === "preview" && (cardHtml || truncated) && (
-        <div className="pointer-events-none absolute bottom-2 right-2">
-          <span className="flex items-center gap-1.5 rounded-full border bg-card/90 px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+      {variant === "preview" && truncated && (
+        <div className="pointer-events-none absolute inset-x-px bottom-px flex h-14 items-end justify-center rounded-b-lg bg-gradient-to-t from-background via-background/70 to-transparent pb-1.5">
+          <span className="flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm">
             <Maximize2 className="size-3" /> open the full artifact
+          </span>
+        </div>
+      )}
+      {variant === "preview" && cardHtml && !truncated && (
+        <div className="mt-1 flex justify-end">
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
+            <Maximize2 className="size-2.5" /> poster — open for the full artifact
           </span>
         </div>
       )}

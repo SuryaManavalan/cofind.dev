@@ -35,7 +35,7 @@ export function ReactionBar({
           key={r.reaction}
           onClick={() => toggle(r.reaction)}
           className={cn(
-            "flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs tabular-nums transition-colors",
+            "flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] tabular-nums transition-colors",
             r.reacted_by_me
               ? "border-brand/40 bg-brand/10 text-foreground"
               : "border-border bg-transparent text-muted-foreground hover:border-ring hover:text-foreground",
@@ -47,10 +47,10 @@ export function ReactionBar({
       <div className="relative">
         <button
           onClick={() => setPicking(!picking)}
-          className="flex size-7 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-ring hover:text-foreground"
+          className="flex size-6 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-ring hover:text-foreground"
           title="Add reaction"
         >
-          <Plus className="size-3.5" />
+          <Plus className="size-3" />
         </button>
         {picking && (
           <div className="absolute bottom-9 left-0 z-10 flex gap-0.5 rounded-xl border bg-popover p-1 shadow-md animate-in fade-in-0 zoom-in-95">
@@ -140,7 +140,7 @@ export function TrackChip({ track }: { track: TrackRef }) {
           e.stopPropagation();
           navigate(`/t/${track.slug}`);
         }}
-        className="flex h-7 items-center rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2.5 text-xs text-emerald-500 transition-colors hover:bg-emerald-500/15"
+        className="flex h-6 items-center rounded-full border border-emerald-500/25 bg-emerald-500/5 px-2 text-[11px] text-emerald-500 transition-colors hover:bg-emerald-500/15"
       >
         #{track.slug}
       </button>
@@ -201,7 +201,7 @@ export default function PostCard({
       <div className="flex gap-3">
         <Avatar handle={post.author.handle} name={post.author.display_name} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
             <span className="font-semibold">{post.author.display_name}</span>
             <span className="text-muted-foreground">@{post.author.handle}</span>
             <span className="text-muted-foreground/60">·</span>
@@ -211,10 +211,10 @@ export default function PostCard({
             <ViaChip via={post.via} />
             {post.edited_at && (
               <span
-                className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-500"
+                className="inline-flex h-5 items-center whitespace-nowrap rounded-full border border-emerald-500/25 bg-emerald-500/10 px-1.5 text-[10px] font-medium text-emerald-500"
                 title={`Updated ${new Date(post.edited_at).toLocaleString()} — a living post`}
               >
-                updated {timeAgo(post.edited_at)}
+                ↻ {timeAgo(post.edited_at)}
               </span>
             )}
             {post.render_mode !== "text" && (
@@ -228,16 +228,16 @@ export default function PostCard({
             <RenderBody body={post.body} mode={post.render_mode} />
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
             <ReactionBar targetId={post.id} reactions={post.reactions} allReactions={allReactions} onChange={onChange} />
             {post.tracks.map((t) => (
               <TrackChip key={t.slug} track={t} />
             ))}
             <button
               onClick={post.reply_count > 0 ? togglePreview : open}
-              className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="flex h-6 items-center gap-1.5 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              <MessageCircle className="size-3.5" />
+              <MessageCircle className="size-3" />
               {post.reply_count > 0 ? post.reply_count : "Reply"}
             </button>
           </div>
