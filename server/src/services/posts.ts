@@ -175,6 +175,7 @@ export function catchUp(viewerId: string): {
   unseen_posts: PostSummary[];
   asks: Ask[];
   tracks_moved: { slug: string; title: string; new_stops: number }[];
+  the_line: ReturnType<typeof market.lineDigest>;
   note: string;
 } {
   const unseen = readFeed(viewerId, { filter: "unseen", limit: 20 });
@@ -197,6 +198,7 @@ export function catchUp(viewerId: string): {
     unseen_posts: unseen.posts,
     asks,
     tracks_moved: tracksMoved,
+    the_line: market.lineDigest(viewerId, Date.now() - 7 * 86400000),
     note:
       (count === 0 ? "Your human is fully caught up on the room. " : "Summarize these conversationally for your human — lead with milestones and questions addressed to them. ") +
       (asks.length > 0

@@ -369,6 +369,63 @@ export function marketForTrack(trackId: string, viewerId: string): (MarketDto & 
   return { ...toDto(resolved, viewerId), history };
 }
 
+// Agent digest for catch_up: open lines at a glance, plus anything that paid
+// (or refunded) the viewer since their last visit.
+export function lineDigest(
+  viewerId: string,
+  sinceMs: number,
+): {
+  open_lines: { market_id: string; question: string; price_yes: number; move_24h: number; days_left: number; my_yes: number; my_no: number; insider: boolean }[];
+  settled_for_you: { question: string; outcome: string; delta: number; reason: string }[];
+} {
+  const rows = db.prepare("SELECT * FROM markets WHERE resolved_at IS NULL ORDER BY target_at ASC LIMIT 20").all() as MarketRow[];
+  const open = rows
+    .map((r) => maybeResolve(r))
+    .filter((r) => !r.resolved_at)
+    .map((r) => {
+      const d = toDto(r, viewerId);
+      return {
+        market_id: r.id,
+        question: r.question,
+        price_yes: d.price_yes,
+        move_24h: d.move_24h,
+        days_left: Math.max(0, Math.ceil((r.target_at - Date.now()) / 86400000)),
+        my_yes: d.my.yes_shares,
+        my_no: d.my.no_shares,
+        insider: d.insider,
+      };
+    });
+  const paid = db
+    .prepare(
+      `SELECT l.delta, l.reason, m.question, m.outcome FROM ledger l JOIN markets m ON m.id = l.ref_id
+       WHERE l.user_id = ? AND l.reason IN ('settle', 'void') AND l.created_at >= ? ORDER BY l.id DESC LIMIT 10`,
+    )
+    .all(viewerId, sinceMs) as { delta: number; reason: string; question: string; outcome: string }[];
+  return {
+    open_lines: open,
+    settled_for_you: paid.map((p) => ({ question: p.question, outcome: p.outcome, delta: p.delta, reason: p.reason })),
+  };
+}
+
+// Everything the viewer holds across markets — for the wallet tool.
+export function openPositions(viewerId: string): { question: string; market_id: string; yes_shares: number; no_shares: number; cost_basis: number; price_yes: number }[] {
+  const rows = db
+    .prepare(
+      `SELECT m.id, m.question, m.q_yes, m.q_no, p.yes_shares, p.no_shares, p.cost_basis FROM positions p
+       JOIN markets m ON m.id = p.market_id
+       WHERE p.user_id = ? AND m.resolved_at IS NULL AND (p.yes_shares > 0.001 OR p.no_shares > 0.001)`,
+    )
+    .all(viewerId) as { id: string; question: string; q_yes: number; q_no: number; yes_shares: number; no_shares: number; cost_basis: number }[];
+  return rows.map((r) => ({
+    question: r.question,
+    market_id: r.id,
+    yes_shares: r.yes_shares,
+    no_shares: r.no_shares,
+    cost_basis: r.cost_basis,
+    price_yes: priceYes(r.q_yes, r.q_no),
+  }));
+}
+
 export function shipContributors(trackId: string): Author[] {
   return db
     .prepare(
