@@ -238,7 +238,12 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
   const frameBody = cardHtml ?? body;
   const maxHeight = variant === "preview" ? (cardHtml ? CARD_FRAME_MAX : PREVIEW_FRAME_MAX) : FULL_FRAME_MAX;
   // Card faces are posters: never show internal scrollbars in the feed/gallery.
-  const previewCss = variant === "preview" ? "<style>html,body{overflow:hidden}</style>" : "";
+  // Full views keep vertical flow (frame is content-height) but suppress
+  // horizontal overflow — sideways pans inside frames trap touch scrolling.
+  const previewCss =
+    variant === "preview"
+      ? "<style>html,body{overflow:hidden}</style>"
+      : "<style>html,body{overflow-x:hidden}</style>";
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {

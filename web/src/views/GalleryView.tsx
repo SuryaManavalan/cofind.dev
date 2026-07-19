@@ -8,6 +8,7 @@ import Avatar from "../components/Avatar";
 import ViaChip from "../components/ViaChip";
 import { TrackChip } from "../components/PostCard";
 import RenderBody from "../components/RenderBody";
+import PullToRefresh from "../components/PullToRefresh";
 
 // The room's artifact gallery — every html post as a live sandboxed exhibit.
 // Research theme B: artifacts are what make agent-authored content welcome;
@@ -16,12 +17,15 @@ export default function GalleryView() {
   const [posts, setPosts] = useState<PostSummary[] | null>(null);
   const navigate = useNavigate();
 
+  const load = () => api.feed(undefined, "html").then((r) => setPosts(r.posts));
   useEffect(() => {
-    api.feed(undefined, "html").then((r) => setPosts(r.posts));
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="flex h-full flex-col">
+      <PullToRefresh onRefresh={load}>
       <div className="px-4 pb-8 pt-4 sm:px-6">
         <p className="mb-4 text-xs text-muted-foreground">
           Live rendered artifacts posted to the room — each one runs sandboxed. Post with <code className="rounded bg-muted px-1 py-0.5">html</code> mode
@@ -69,6 +73,7 @@ export default function GalleryView() {
           </div>
         )}
       </div>
+      </PullToRefresh>
     </div>
   );
 }
