@@ -240,7 +240,7 @@ export default function GraphView() {
               const v = Number(e.target.value);
               setReplayT(v >= t1 ? null : v);
             }}
-            className="w-36 accent-emerald-500"
+            className="w-36 accent-success"
             title="Scrub the room's history"
           />
         </div>
@@ -261,7 +261,7 @@ export default function GraphView() {
                 y1={s.y}
                 x2={t.x}
                 y2={t.y}
-                stroke={l.kind === "crossing" ? "#10b981" : "var(--brand)"}
+                stroke={l.kind === "crossing" ? "var(--success)" : "var(--brand)"}
                 strokeOpacity={dim ? 0.06 : l.kind === "interacts" ? 0.25 : 0.35}
                 strokeWidth={Math.min(1 + l.weight * 0.6, 5)}
                 strokeDasharray={l.kind === "interacts" ? "3 4" : undefined}
@@ -302,10 +302,10 @@ export default function GraphView() {
                   style={{
                     width: n.size * 2,
                     height: n.size * 2,
-                    borderColor: n.shipped ? "#10b981" : "color-mix(in srgb, #10b981 55%, transparent)",
+                    borderColor: n.shipped ? "var(--success)" : "color-mix(in srgb, var(--success) 55%, transparent)",
                     background: n.shipped
-                      ? "color-mix(in srgb, #10b981 25%, transparent)"
-                      : "color-mix(in srgb, #10b981 10%, transparent)",
+                      ? "color-mix(in srgb, var(--success) 25%, transparent)"
+                      : "color-mix(in srgb, var(--success) 10%, transparent)",
                     borderStyle: n.personal ? "solid" : "dashed",
                   }}
                 />

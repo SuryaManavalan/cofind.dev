@@ -143,7 +143,7 @@ export function TrackChip({ track }: { track: TrackRef }) {
           e.stopPropagation();
           navigate(`/t/${track.slug}`);
         }}
-        className="flex h-6 items-center rounded-full border border-emerald-500/25 bg-emerald-500/5 px-2 text-[11px] text-emerald-500 transition-colors hover:bg-emerald-500/15"
+        className="flex h-6 items-center rounded-full border border-success/25 bg-success/5 px-2 text-[11px] text-success transition-colors hover:bg-success/15"
       >
         #{track.slug}
       </button>
@@ -153,7 +153,7 @@ export function TrackChip({ track }: { track: TrackRef }) {
           onClick={(e) => e.stopPropagation()}
         >
           <span className="mb-1.5 flex items-baseline gap-2 text-xs">
-            <span className="font-semibold text-emerald-500">#{track.slug}</span>
+            <span className="font-semibold text-success">#{track.slug}</span>
             <span className="text-muted-foreground">
               {peek.count} stops{peek.shipped ? " · 🚢 shipped" : ""}
             </span>
@@ -214,7 +214,7 @@ export default function PostCard({
             <ViaChip via={post.via} />
             {post.edited_at && (
               <span
-                className="inline-flex h-5 items-center whitespace-nowrap rounded-full border border-emerald-500/25 bg-emerald-500/10 px-1.5 text-[10px] font-medium text-emerald-500"
+                className="inline-flex h-5 items-center whitespace-nowrap rounded-full border border-success/25 bg-success/10 px-1.5 text-[10px] font-medium text-success"
                 title={`Updated ${new Date(post.edited_at).toLocaleString()} — a living post`}
               >
                 ↻ {timeAgo(post.edited_at)}

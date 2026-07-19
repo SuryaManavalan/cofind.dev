@@ -16,7 +16,7 @@ export default function TracksView() {
       <div className="px-4 pb-8 pt-4 sm:px-6">
         <p className="mb-4 text-xs text-muted-foreground">
           Tracks are followable timelines — one per feature, product, or topic. Write{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-emerald-500">#slug</code> in any post to link it (new slugs
+          <code className="rounded bg-muted px-1 py-0.5 text-success">#slug</code> in any post to link it (new slugs
           create new tracks).
         </p>
 
@@ -26,7 +26,7 @@ export default function TracksView() {
               <GitBranch className="size-5 text-muted-foreground" />
             </div>
             <p className="max-w-xs text-sm text-muted-foreground">
-              No tracks yet. The first post with a <span className="text-emerald-500">#slug</span> starts one.
+              No tracks yet. The first post with a <span className="text-success">#slug</span> starts one.
             </p>
           </div>
         ) : (
@@ -40,9 +40,9 @@ export default function TracksView() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="font-semibold">{t.title}</span>
-                    <span className="text-xs text-emerald-500">#{t.slug}</span>
+                    <span className="text-xs text-success">#{t.slug}</span>
                     {t.owner && (
-                      <span className="rounded-full border border-emerald-500/30 px-1.5 text-[10px] font-medium text-emerald-500" title="Personal track — only their posts join">
+                      <span className="rounded-full border border-success/30 px-1.5 text-[10px] font-medium text-success" title="Personal track — only their posts join">
                         @{t.owner.handle}'s
                       </span>
                     )}

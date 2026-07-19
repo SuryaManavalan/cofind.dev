@@ -101,18 +101,18 @@ export default function TrackView() {
           <h1 className="flex items-center gap-1.5 truncate text-sm font-semibold">
             {track?.owner && <Avatar handle={track.owner.handle} name={track.owner.display_name} className="size-4.5 text-[8px]" />}
             <span className="truncate">{track?.title ?? slug}</span>
-            <span className="shrink-0 font-normal text-emerald-500">#{slug}</span>
+            <span className="shrink-0 font-normal text-success">#{slug}</span>
             {track?.owner && (
               <span
-                className="shrink-0 rounded-full border border-emerald-500/30 px-1.5 text-[10px] font-medium text-emerald-500"
+                className="shrink-0 rounded-full border border-success/30 px-1.5 text-[10px] font-medium text-success"
                 title={`Personal track — only @${track.owner.handle}'s posts join`}
               >
                 @{track.owner.handle}'s
               </span>
             )}
-            {hot && <Flame className="size-3.5 shrink-0 text-orange-500" aria-label="Momentum: 3+ stops this week" />}
+            {hot && <Flame className="size-3.5 shrink-0 text-warning" aria-label="Momentum: 3+ stops this week" />}
             {isShipped && (
-              <span className="shrink-0 rounded-full border border-emerald-500/50 bg-emerald-500/15 px-1.5 text-[10px] font-bold text-emerald-500">
+              <span className="shrink-0 rounded-full border border-success/50 bg-success/15 px-1.5 text-[10px] font-bold text-success">
                 🚢 shipped
               </span>
             )}
@@ -184,7 +184,7 @@ export default function TrackView() {
                   <button
                     key={r.slug}
                     onClick={() => navigate(`/t/${r.slug}`)}
-                    className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2 py-0.5 text-[11px] text-emerald-500 transition-colors hover:bg-emerald-500/15"
+                    className="rounded-full border border-success/30 bg-success/5 px-2 py-0.5 text-[11px] text-success transition-colors hover:bg-success/15"
                     title={`${r.shared_posts} shared ${r.shared_posts === 1 ? "post" : "posts"} · ${r.shared_contributors} shared ${r.shared_contributors === 1 ? "contributor" : "contributors"}`}
                   >
                     #{r.slug}
@@ -203,10 +203,10 @@ export default function TrackView() {
             className={cn(
               "absolute bottom-4 left-[26px] top-4 w-px sm:left-[34px]",
               isShipped
-                ? "bg-emerald-500/60"
+                ? "bg-success/60"
                 : oldestFirst
-                  ? "bg-gradient-to-b from-border via-border to-emerald-500/60"
-                  : "bg-gradient-to-b from-emerald-500/60 via-border to-border",
+                  ? "bg-gradient-to-b from-border via-border to-success/60"
+                  : "bg-gradient-to-b from-success/60 via-border to-border",
             )}
           />
           {ordered.map((post, i) => {
@@ -216,14 +216,14 @@ export default function TrackView() {
                 <span
                   className={cn(
                     "absolute left-[22px] top-7 rounded-full border-2 border-background sm:left-[30px]",
-                    i === latestIdx ? "bg-emerald-500" : "bg-muted-foreground/50",
+                    i === latestIdx ? "bg-success" : "bg-muted-foreground/50",
                     reactionWeight >= 3 ? "size-3.5 -translate-x-0.5" : reactionWeight >= 1 ? "size-3 -translate-x-px" : "size-2.5",
                   )}
                   title={reactionWeight > 0 ? `${reactionWeight} reactions — a peak` : undefined}
                 />
                 <div className="mb-1 pt-2 text-[11px] uppercase tracking-wide text-muted-foreground">
                   {new Date(post.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                  {i === latestIdx && <span className="ml-2 font-semibold text-emerald-500">latest</span>}
+                  {i === latestIdx && <span className="ml-2 font-semibold text-success">latest</span>}
                 </div>
                 <div className="overflow-hidden rounded-xl border bg-card/50">
                   <PostCard post={post} allReactions={reactions} onChange={load} />

@@ -95,7 +95,7 @@ export default function CommandPalette({
                 <Item key={t.id} onSelect={() => run(() => navigate(`/t/${t.slug}`))} value={`#${t.slug} ${t.title}`}>
                   <GitBranch />
                   <span className="truncate">
-                    <span className="font-medium text-emerald-500">#{t.slug}</span>{" "}
+                    <span className="font-medium text-success">#{t.slug}</span>{" "}
                     <span className="text-muted-foreground">{t.post_count} stops</span>
                   </span>
                 </Item>

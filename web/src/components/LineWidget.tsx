@@ -142,7 +142,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
         <h2 className="text-sm font-semibold leading-snug">{line.question}</h2>
         <span className="flex shrink-0 items-center gap-1 text-[10px] font-medium text-muted-foreground">
           {settled ? (
-            <span className={cn("rounded-full px-2 py-0.5 font-bold", won ? "bg-emerald-500/15 text-emerald-500" : "bg-destructive/15 text-destructive")}>
+            <span className={cn("rounded-full px-2 py-0.5 font-bold", won ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
               SETTLED {won ? "YES" : "NO"}
             </span>
           ) : (
@@ -158,7 +158,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
         <span
           className={cn(
             "text-[44px] font-extrabold leading-none tracking-tight tabular-nums transition-colors",
-            settled ? (won ? "text-emerald-500" : "text-destructive") : "text-foreground",
+            settled ? (won ? "text-success" : "text-destructive") : "text-foreground",
             flash && "text-brand",
           )}
         >
@@ -166,7 +166,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
         </span>
         <div className="pb-1 leading-tight">
           {move !== 0 && !settled && (
-            <div className={cn("text-sm font-bold tabular-nums", move > 0 ? "text-emerald-500" : "text-destructive")}>
+            <div className={cn("text-sm font-bold tabular-nums", move > 0 ? "text-success" : "text-destructive")}>
               {move > 0 ? "▲" : "▼"} {Math.abs(move)} today
             </div>
           )}
@@ -185,7 +185,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
 
       {settled ? (
         line.my.payout ? (
-          <p className="mt-2 text-sm font-semibold text-emerald-500">🎆 Your position paid out +{line.my.payout} conviction</p>
+          <p className="mt-2 text-sm font-semibold text-success">🎆 Your position paid out +{line.my.payout} conviction</p>
         ) : null
       ) : line.insider ? (
         <p className="mt-2 rounded-lg border border-dashed px-3 py-2 text-[11px] text-muted-foreground">
@@ -197,7 +197,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
           <div className="mt-2.5 grid grid-cols-2 gap-2">
             {(
               [
-                { sd: "yes" as const, label: "YES", price: yesPrice, on: "border-emerald-500 bg-emerald-500/15 text-emerald-500", ring: "hover:border-emerald-500/50" },
+                { sd: "yes" as const, label: "YES", price: yesPrice, on: "border-success bg-success/15 text-success", ring: "hover:border-success/50" },
                 { sd: "no" as const, label: "NO", price: noPrice, on: "border-destructive bg-destructive/15 text-destructive", ring: "hover:border-destructive/50" },
               ]
             ).map((b) => (
@@ -237,7 +237,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
               disabled={busy}
               className={cn(
                 "h-8 flex-1 rounded-full text-xs font-bold shadow-sm transition-transform active:scale-95 sm:flex-none sm:px-5",
-                side === "yes" ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-destructive text-white hover:bg-destructive/90",
+                side === "yes" ? "bg-success text-white hover:bg-success/90" : "bg-destructive text-white hover:bg-destructive/90",
               )}
             >
               Stake {spend} on {side.toUpperCase()}
@@ -259,7 +259,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
           {line.my.yes_shares > 0.01 && (
             <button
               onClick={(e) => sellAll("yes", line.my.yes_shares, e)}
-              className="rounded-full border border-emerald-500/40 px-2 py-0.5 font-medium text-emerald-500 transition-colors hover:bg-emerald-500/10"
+              className="rounded-full border border-success/40 px-2 py-0.5 font-medium text-success transition-colors hover:bg-success/10"
               title="Sell back to the market"
             >
               {line.my.yes_shares.toFixed(1)} YES · pays {Math.round(line.my.yes_shares * 10)} ✕
@@ -290,7 +290,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
                     <Avatar handle={b.handle} name={b.display_name} className="size-4 text-[7px]" />
                     <span className="font-medium">@{b.handle}</span>
                     <span className="ml-auto tabular-nums">
-                      {b.yes_shares > 0.01 && <span className="text-emerald-500">{b.yes_shares.toFixed(0)} YES</span>}
+                      {b.yes_shares > 0.01 && <span className="text-success">{b.yes_shares.toFixed(0)} YES</span>}
                       {b.yes_shares > 0.01 && b.no_shares > 0.01 && <span className="text-muted-foreground"> · </span>}
                       {b.no_shares > 0.01 && <span className="text-destructive">{b.no_shares.toFixed(0)} NO</span>}
                     </span>
@@ -305,7 +305,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
               <ul className="space-y-1">
                 {recentTrades.map((tr: TradeEvent, i) => (
                   <li key={i} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <span className={cn("size-1.5 shrink-0 rounded-full", tr.side === "yes" ? "bg-emerald-500" : "bg-destructive")} />
+                    <span className={cn("size-1.5 shrink-0 rounded-full", tr.side === "yes" ? "bg-success" : "bg-destructive")} />
                     <span className="truncate">
                       <b className="font-medium text-foreground">@{tr.handle}</b> {tr.action === "buy" ? "staked" : "sold"} {Math.abs(tr.cost)}{" "}
                       {tr.side.toUpperCase()}

@@ -68,7 +68,7 @@ function MembersRail() {
                   <div className="relative">
                     <Avatar handle={m.handle} name={m.display_name} className="size-8 text-xs" />
                     {online && (
-                      <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-emerald-500" />
+                      <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background bg-success" />
                     )}
                   </div>
                   <div className="min-w-0 leading-tight">
@@ -76,7 +76,7 @@ function MembersRail() {
                     <p className="truncate text-xs text-muted-foreground">@{m.handle}</p>
                   </div>
                   <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
-                    {online ? <span className="text-emerald-500">online</span> : m.last_active_at ? timeAgo(m.last_active_at) : "—"}
+                    {online ? <span className="text-success">online</span> : m.last_active_at ? timeAgo(m.last_active_at) : "—"}
                   </span>
                 </button>
               </li>
@@ -118,7 +118,7 @@ function MovingNow() {
   return (
     <div>
       <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        <GitBranch className="size-3.5 text-emerald-500" /> Moving now
+        <GitBranch className="size-3.5 text-success" /> Moving now
       </h2>
       <ul className="space-y-1.5">
         {moving.map((t) => (
@@ -127,8 +127,8 @@ function MovingNow() {
               onClick={() => navigate(`/t/${t.slug}`)}
               className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
             >
-              <span className="truncate font-medium text-emerald-500">#{t.slug}</span>
-              {t.recent_count >= 3 && <Flame className="size-3 shrink-0 text-orange-500" />}
+              <span className="truncate font-medium text-success">#{t.slug}</span>
+              {t.recent_count >= 3 && <Flame className="size-3 shrink-0 text-warning" />}
               <span className="ml-auto shrink-0 text-muted-foreground">
                 {t.post_count} · {t.last_post_at ? timeAgo(t.last_post_at) : ""}
               </span>
@@ -178,7 +178,7 @@ function TheLineTicker() {
               <span className="truncate font-medium text-brand">#{m.track.slug}</span>
               <span className="ml-auto shrink-0 tabular-nums text-foreground">{Math.round(m.price_yes * 100)}%</span>
               {m.move_24h !== 0 && (
-                <span className={cn("shrink-0 tabular-nums", m.move_24h > 0 ? "text-emerald-500" : "text-destructive")}>
+                <span className={cn("shrink-0 tabular-nums", m.move_24h > 0 ? "text-success" : "text-destructive")}>
                   {m.move_24h > 0 ? "▲" : "▼"}{Math.round(Math.abs(m.move_24h) * 100)}
                 </span>
               )}
@@ -407,7 +407,7 @@ export default function Layout({
             <p className="flex items-center gap-1.5 font-semibold tracking-tight">
               Cofind
               {IS_DEV_ENV && (
-                <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-amber-500">
+                <span className="rounded border border-warning/40 bg-warning/10 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-warning">
                   dev
                 </span>
               )}
@@ -496,7 +496,7 @@ export default function Layout({
               <img src="/icon.svg" alt="" className="size-7 rounded-lg" />
               <span className="font-semibold tracking-tight">Cofind</span>
               {IS_DEV_ENV && (
-                <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-amber-500">
+                <span className="rounded border border-warning/40 bg-warning/10 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-warning">
                   dev
                 </span>
               )}
