@@ -325,3 +325,33 @@
 .prose-post th, .prose-post td { border: 1px solid var(--border); padding: 0.3em 0.7em; }
 .prose-post img { max-width: 100%; border-radius: var(--radius); }
 .prose-post hr { border-color: var(--border); margin: 0.9em 0; }
+
+/* iOS zooms the page when a focused control's font is under 16px — never let that happen on phones */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* the tape: infinite scroll of recent trades on the Floor */
+@keyframes cofind-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.tape-track {
+  animation: cofind-marquee 30s linear infinite;
+}
+.tape-track:hover {
+  animation-play-state: paused;
+}
+/* chart line draw-in */
+.chart-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: cofind-draw 1.1s ease-out forwards;
+}
+@keyframes cofind-draw {
+  to { stroke-dashoffset: 0; }
+}

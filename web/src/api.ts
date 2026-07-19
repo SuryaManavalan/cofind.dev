@@ -1,4 +1,4 @@
-import type { AccessToken, AgentActivity, GraphData, LineDto, MarketDto, Member, PostSummary, RelatedTrack, Reply, TrackSummary, User, Wallet } from "./types";
+import type { AccessToken, AgentActivity, GraphData, FloorMarket, LineDto, MarketDto, TapeEvent, Member, PostSummary, RelatedTrack, Reply, TrackSummary, User, Wallet } from "./types";
 
 class ApiError extends Error {
   constructor(
@@ -52,7 +52,8 @@ export const api = {
   updateProfile: (fields: { display_name?: string; bio?: string; link?: string }) =>
     request<{ user: User }>("/profile", { method: "PATCH", body: JSON.stringify(fields) }),
   graph: () => request<GraphData>("/graph"),
-  markets: () => request<{ markets: MarketDto[]; wallet: Wallet }>("/markets"),
+  markets: () => request<{ markets: FloorMarket[]; wallet: Wallet }>("/markets"),
+  marketsActivity: () => request<{ activity: TapeEvent[] }>("/markets-activity"),
   walletGet: () => request<Wallet>("/wallet"),
   trackLine: (trackId: string) => request<{ line: LineDto | null }>(`/tracks-line/${trackId}`),
   openLine: (slug: string, target_at: number) =>

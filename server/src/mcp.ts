@@ -143,7 +143,7 @@ function buildMcpServer(user: users.User): McpServer {
     "catch_up",
     {
       title: "Catch your human up on the room",
-      description: `Brief ${user.display_name} on what they missed in the Cofind room: returns every post they haven't seen in the app yet (up to 20, newest first) plus asks[] — recent @${user.handle} mentions addressed to them — and tracks_moved[]: which tracks gained stops they haven't seen (brief per-story, the way founders think). If an ask is something you can answer from context, reply on that post as ${user.display_name}. Summarize conversationally — lead with milestones and anything addressed to them.`,
+      description: `Brief ${user.display_name} on what they missed in the Cofind room: returns every post they haven't seen in the app yet (up to 20, newest first) plus asks[] — recent @${user.handle} mentions addressed to them — and tracks_moved[]: which tracks gained stops they haven't seen (brief per-story, the way founders think). If an ask is something you can answer from context, reply on that post as ${user.display_name}. Summarize conversationally — lead with milestones and anything addressed to them. Includes the_line: open markets at a glance and any settlements that paid your human this week.`,
       inputSchema: {},
     },
     wrap(user.id, "catch_up", () => posts.catchUp(user.id)),
@@ -213,6 +213,17 @@ function buildMcpServer(user: users.User): McpServer {
   );
 
   server.registerTool(
+    "get_wallet",
+    {
+      title: `Read ${user.display_name}'s conviction wallet`,
+      description:
+        "Balance, the recent ledger (how conviction was earned and spent — building mints it: stops, reactions received, ships, showing up), and every open market position with its live price. Use this before trading or to tell your human how their week paid.",
+      inputSchema: {},
+    },
+    wrap(user.id, "get_wallet", () => ({ ...market.wallet(user.id), positions: market.openPositions(user.id) })),
+  );
+
+  server.registerTool(
     "open_line",
     {
       title: "Open the line on a track",
@@ -234,17 +245,22 @@ function buildMcpServer(user: users.User): McpServer {
     "trade",
     {
       title: "Trade on a line",
-      description: `Buy or sell YES/NO shares with ${user.display_name}'s conviction. action "buy": amount = conviction to spend (min 5). action "sell": amount = shares to sell back. Winning shares pay 10 conviction each at settlement. Read get_track first — trade on information, not vibes. Positions are public to the room.`,
+      description: `Buy or sell YES/NO shares with ${user.display_name}'s conviction. action "buy": amount = conviction to spend (min 5). action "sell": amount = shares to sell back. Winning shares pay 10 conviction each at settlement. Pass dry_run: true to preview a buy (shares + price impact) without committing. Read get_track first — trade on information, not vibes. Positions are public to the room. The insider rule: you can't trade a line ${user.display_name} can settle (their own tracks).`,
       inputSchema: {
         market_id: z.string(),
         side: z.enum(["yes", "no"]),
         action: z.enum(["buy", "sell"]),
         amount: z.number().positive(),
+        dry_run: z.boolean().optional().describe("true = quote only: see shares, avg price, and where the line moves without executing"),
       },
     },
-    wrap(user.id, "trade", (args: { market_id: string; side: "yes" | "no"; action: "buy" | "sell"; amount: number }) =>
-      market.trade(user.id, args.market_id, args.side, args.action, args.amount),
-    ),
+    wrap(user.id, "trade", (args: { market_id: string; side: "yes" | "no"; action: "buy" | "sell"; amount: number; dry_run?: boolean }) => {
+      if (args.dry_run) {
+        if (args.action === "sell") throw new Error("dry_run supports buy quotes only");
+        return { quote: market.quote(args.market_id, args.side, Math.floor(args.amount)), note: "Not executed. Call again without dry_run to trade." };
+      }
+      return market.trade(user.id, args.market_id, args.side, args.action, args.amount);
+    }),
   );
 
   server.registerTool(
@@ -263,10 +279,13 @@ function buildMcpServer(user: users.User): McpServer {
     {
       title: "Read a track's full story",
       description:
-        'Fetch one track by slug with ALL its posts in chronological order — the complete history of that feature/product/topic. Use this to answer "what\'s the latest on X" or to write an informed update that continues the story.',
+        'Fetch one track by slug with ALL its posts in chronological order — the complete history of that feature/product/topic — plus its line (prediction market) if one exists: live price, target, your position. Use this to answer "what\'s the latest on X", to write an informed update, or to research before trading.',
       inputSchema: { slug: z.string().describe('The track slug, e.g. "oauth"') },
     },
-    wrap(user.id, "get_track", (args: { slug: string }) => posts.getTrack(user.id, args.slug)),
+    wrap(user.id, "get_track", (args: { slug: string }) => {
+      const t = posts.getTrack(user.id, args.slug);
+      return { ...t, line: market.marketForTrack(t.track.id, user.id) };
+    }),
   );
 
   server.registerTool(
