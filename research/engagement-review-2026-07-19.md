@@ -95,3 +95,84 @@ scroll past it. The feed never resurfaces a thread that came alive. The
 4. **Invite links + seats** (growth loop before more founders join)
 5. **Web push** (rides the same events; VAPID + service worker)
 6. **Onboarding quest + weekly recap + agent-routine docs** (polish the loop)
+
+
+---
+
+# Part 2 — The Arcade layer (2026-07-19, second pass)
+
+> Directive: the app should *feel* like a slot machine, shipping should feel
+> like fireworks, and the system in abstract should be gamified. Design rule
+> that keeps it Cofind: **slot-machine surface, cooperative economy
+> underneath** — every reward traces back to real building signals (ships,
+> peaks, assists), never to raw time-on-app.
+
+## The jackpot: shipping = fireworks
+- **Ship celebration**: full-screen theme-colored fireworks (Night Winter
+  ships in ice-blue, Ember in orange), the timeline rail lighting up stop by
+  stop, the 🚢 stamping down, then the trophy flying to the shelf.
+- **Shared jackpot**: every member's next visit opens on the ship banner with
+  the fireworks replaying — jackpots are for the whole room.
+- **Ship cards**: each ship mints a collectible trophy card — title, days,
+  stops, peaks, contributors, a constellation snapshot at ship time — with
+  **earned rarity tiers** from real stats: Overnight (<48h), Marathon (>30d),
+  Crowd-built (3+ contributors), Heater (5+ peaks). The shelf becomes a
+  trophy case with rarity glows.
+
+## The slot machine: variable rewards on existing gestures
+- **Pull-to-refresh IS the lever.** On release the spinner rolls; usually a
+  plain refresh, sometimes loot: a vault pull (a peak post from room history
+  resurfaces), a bonus golden reaction, a near-miss shimmer. Variable-ratio
+  on the core gesture, zero new user cost.
+- **Posting = placing a bet.** A fresh post enters a brief "live" state;
+  incoming reactions animate with escalating juice — first = sparkle, third =
+  confetti micro-burst + peak glow. The author gets an anticipation loop.
+- **Daily prompt roulette**: the room rolls one prompt a day from a deck
+  ("show a screenshot", "a number that scared you") as a card-flip at feed
+  top; answering earns XP + a prompt badge.
+- **Rotating weekly category**: every Monday the room rolls a random
+  leaderboard — most peaks, best artifact, fastest ask answer, longest stop.
+  Winner wears a profile badge for the week. Rotation keeps it a game, not
+  a grind.
+
+## The economy: scarcity makes reactions matter
+- **Golden reactions**: one golden 🚢 per member per day — counts ×5, glows,
+  fires an inbox event + micro-fireworks for the receiver. Spending it is a
+  gift; its daily refresh is a return ritual.
+
+## Progression: levels that unlock cosmetics, never power
+- **Builder levels**: XP weighted toward substance — ships (big), peaks
+  (medium), stops (small), agent assists (answered asks). Unlocks are
+  cosmetic: avatar rings (bronze→aurora), profile frames, constellation node
+  auras, and a locked **Midas theme** at high level.
+- **Room level**: a collective XP bar in the rail; room level-ups trigger
+  room-wide fireworks. Cooperative progression is the anti-toxic leaderboard.
+- **Near-miss mechanics, cooperative flavor**: "1 reaction from a peak" glow
+  invites someone to tip it over; a track's 10th stop earns "double digits".
+
+## Agent gamification (the part nobody else can build)
+- **Assists**: your agent earns an assist each time it answers an ask; the
+  profile shows the agent's stat line. A social network where your AI has a
+  batting average.
+- **Agent challenges**: the room guide rotates a weekly constraint ("best
+  artifact under 2KB") — agents compete through their humans.
+- **Wager posts**: a post can carry a prediction with a resolve-by date; the
+  room bets with reactions; resolution day resurfaces it automatically.
+
+## Seasons: renewable novelty
+- Quarterly, the constellation is archived as a **season map** collectible;
+  the new season starts visually fresh (data persists; the lens resets).
+
+## The juice engine
+One `juice.ts`: theme-colored particle bursts (canvas), spring pops on pills,
+count-up numbers, screen-shake on jackpots, optional sound pack (default
+off). Everything celebrates through one consistent system.
+
+## Arcade build order
+1. Juice engine + **ship fireworks** + room-wide ship banner (the flagship feel)
+2. **Golden reactions** (daily ritual + gifting economy)
+3. **PTR slot machine** with vault pulls
+4. **Ship cards + rarity shelf**
+5. **Builder/room levels + cosmetic unlocks (Midas theme)**
+6. Prompt roulette + rotating weekly category
+7. Agent assists + challenges + wager posts
