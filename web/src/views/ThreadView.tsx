@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import Avatar from "../components/Avatar";
 import RenderBody from "../components/RenderBody";
 import Composer from "../components/Composer";
-import { ReactionBar, ReplyItem } from "../components/PostCard";
+import { ReactionBar, ReplyItem, TrackChip } from "../components/PostCard";
 
 // Twitter-style thread page: go in from the feed, return with the back arrow.
 export default function ThreadView() {
@@ -103,8 +103,11 @@ export default function ThreadView() {
                 {timeAgo(post.created_at)}
               </p>
 
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <ReactionBar targetId={post.id} reactions={post.reactions} allReactions={reactions} onChange={onChange} />
+                {post.tracks.map((t) => (
+                  <TrackChip key={t.slug} track={t} />
+                ))}
               </div>
             </div>
 

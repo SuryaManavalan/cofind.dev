@@ -1,27 +1,30 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, Pencil } from "lucide-react";
-import type { PostSummary, TrackSummary } from "../types";
+import { ArrowDownUp, ArrowLeft, Check, Flame, Pencil, Ship } from "lucide-react";
+import type { PostSummary, RelatedTrack, TrackSummary } from "../types";
 import { api } from "../api";
 import { useFeed } from "../feed-context";
-import { timeAgo } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Avatar from "../components/Avatar";
 import PostCard from "../components/PostCard";
+import Composer from "../components/Composer";
 
-// A track reads oldest-first — it's the story of one thing being built,
-// rendered as a literal timeline. The feed covers recency; this covers narrative.
+// A track is the story of one thing being built. Newest-first by default
+// (consistent with the whole app); "from the start" toggle for narrative reads.
 export default function TrackView() {
   const params = useParams<{ ns?: string; slug: string }>();
   const slug = params.ns ? `${params.ns}/${params.slug}` : params.slug;
   const navigate = useNavigate();
-  const { reactions } = useFeed();
+  const { me, reactions, refresh: refreshFeed } = useFeed();
   const [track, setTrack] = useState<TrackSummary | null>(null);
   const [posts, setPosts] = useState<PostSummary[]>([]);
+  const [related, setRelated] = useState<RelatedTrack[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [desc, setDesc] = useState("");
+  const [oldestFirst, setOldestFirst] = useState(() => localStorage.getItem("cofind-track-order") === "story");
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -29,6 +32,7 @@ export default function TrackView() {
       const data = await api.getTrack(slug);
       setTrack(data.track);
       setPosts(data.posts);
+      setRelated(data.related);
       setDesc(data.track.description ?? "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load track");
@@ -57,6 +61,32 @@ export default function TrackView() {
     setEditing(false);
   }
 
+  function toggleOrder() {
+    const next = !oldestFirst;
+    setOldestFirst(next);
+    localStorage.setItem("cofind-track-order", next ? "story" : "latest");
+  }
+
+  async function toggleShip() {
+    if (!slug || !track) return;
+    const verb = track.shipped_at ? "Reopen this track?" : "Ship this track? Its story closes and no new stops can join.";
+    if (!confirm(verb)) return;
+    const { track: updated } = await api.shipTrack(slug, !track.shipped_at);
+    setTrack(updated);
+    refreshFeed();
+  }
+
+  const isShipped = !!track?.shipped_at;
+  const isPersonal = !!track?.owner;
+  const canPost = !isShipped && (!isPersonal || track?.owner?.handle.toLowerCase() === me.handle.toLowerCase());
+  const canShip =
+    !!track && (isPersonal ? track.owner!.handle.toLowerCase() === me.handle.toLowerCase() : track.contributors.some((c) => c.handle === me.handle));
+  const hot = !!track && !isShipped && track.recent_count >= 3;
+  const daysBuilt = track ? Math.max(1, Math.round(((track.shipped_at ?? Date.now()) - track.created_at) / 86400000)) : 0;
+
+  const ordered = oldestFirst ? posts : [...posts].reverse();
+  const latestIdx = oldestFirst ? posts.length - 1 : 0;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-3 border-b px-3 py-2.5 sm:px-4">
@@ -69,21 +99,46 @@ export default function TrackView() {
             <span className="truncate">{track?.title ?? slug}</span>
             <span className="shrink-0 font-normal text-emerald-500">#{slug}</span>
             {track?.owner && (
-              <span className="shrink-0 rounded-full border border-emerald-500/30 px-1.5 text-[10px] font-medium text-emerald-500" title={`Personal track — only @${track.owner.handle}'s posts join`}>
+              <span
+                className="shrink-0 rounded-full border border-emerald-500/30 px-1.5 text-[10px] font-medium text-emerald-500"
+                title={`Personal track — only @${track.owner.handle}'s posts join`}
+              >
                 @{track.owner.handle}'s
+              </span>
+            )}
+            {hot && <Flame className="size-3.5 shrink-0 text-orange-500" aria-label="Momentum: 3+ stops this week" />}
+            {isShipped && (
+              <span className="shrink-0 rounded-full border border-emerald-500/50 bg-emerald-500/15 px-1.5 text-[10px] font-bold text-emerald-500">
+                🚢 shipped
               </span>
             )}
           </h1>
           {track && (
             <p className="text-xs text-muted-foreground">
-              {track.post_count} {track.post_count === 1 ? "update" : "updates"} · started {timeAgo(track.created_at)}
+              {track.post_count} {track.post_count === 1 ? "stop" : "stops"} ·{" "}
+              {isShipped ? `built in ${daysBuilt} ${daysBuilt === 1 ? "day" : "days"}` : `started ${timeAgo(track.created_at)}`}
             </p>
           )}
         </div>
-        <div className="ml-auto flex shrink-0 -space-x-1.5">
-          {track?.contributors.slice(0, 5).map((a) => (
-            <Avatar key={a.id} handle={a.handle} name={a.display_name} className="size-6 text-[10px] ring-2 ring-background" />
-          ))}
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <div className="flex -space-x-1.5">
+            {track?.contributors.slice(0, 5).map((a) => (
+              <Avatar key={a.id} handle={a.handle} name={a.display_name} className="size-6 text-[10px] ring-2 ring-background" />
+            ))}
+          </div>
+          <Button variant="ghost" size="icon-sm" onClick={toggleOrder} title={oldestFirst ? "Show newest first" : "Read from the start"}>
+            <ArrowDownUp />
+          </Button>
+          {canShip && (
+            <Button
+              variant={isShipped ? "ghost" : "outline"}
+              size="sm"
+              onClick={toggleShip}
+              title={isShipped ? "Reopen the story" : "Close the story — tip: have your agent post a retrospective first"}
+            >
+              <Ship /> {isShipped ? "Reopen" : "Ship it"}
+            </Button>
+          )}
         </div>
       </header>
 
@@ -116,30 +171,83 @@ export default function TrackView() {
                 <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />
               </button>
             )}
+            {related.length > 0 && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">crosses</span>
+                {related.map((r) => (
+                  <button
+                    key={r.slug}
+                    onClick={() => navigate(`/t/${r.slug}`)}
+                    className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2 py-0.5 text-[11px] text-emerald-500 transition-colors hover:bg-emerald-500/15"
+                    title={`${r.shared_posts} shared ${r.shared_posts === 1 ? "post" : "posts"} · ${r.shared_contributors} shared ${r.shared_contributors === 1 ? "contributor" : "contributors"}`}
+                  >
+                    #{r.slug}
+                    {r.shared_posts > 0 && <span className="ml-1 opacity-70">⤫{r.shared_posts}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* the timeline: a literal track down the left, one stop per update */}
+        {/* the timeline: a literal track down the left, one stop per update;
+            dots scale with reactions — the story shows its peaks */}
         <div className="relative px-2 py-4 sm:px-4">
-          <div className="absolute bottom-4 left-[26px] top-4 w-px bg-gradient-to-b from-emerald-500/60 via-border to-border sm:left-[34px]" />
-          {posts.map((post, i) => (
-            <div key={post.id} className="relative pl-8 sm:pl-10">
-              <span
-                className={`absolute left-[22px] top-7 size-2.5 rounded-full border-2 border-background sm:left-[30px] ${
-                  i === posts.length - 1 ? "bg-emerald-500" : "bg-muted-foreground/50"
-                }`}
-              />
-              <div className="mb-1 pt-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-                {new Date(post.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                {i === posts.length - 1 && <span className="ml-2 font-semibold text-emerald-500">latest</span>}
+          <div
+            className={cn(
+              "absolute bottom-4 left-[26px] top-4 w-px sm:left-[34px]",
+              isShipped
+                ? "bg-emerald-500/60"
+                : oldestFirst
+                  ? "bg-gradient-to-b from-border via-border to-emerald-500/60"
+                  : "bg-gradient-to-b from-emerald-500/60 via-border to-border",
+            )}
+          />
+          {ordered.map((post, i) => {
+            const reactionWeight = post.reactions.reduce((a, r) => a + r.count, 0);
+            return (
+              <div key={post.id} className="relative pl-8 sm:pl-10">
+                <span
+                  className={cn(
+                    "absolute left-[22px] top-7 rounded-full border-2 border-background sm:left-[30px]",
+                    i === latestIdx ? "bg-emerald-500" : "bg-muted-foreground/50",
+                    reactionWeight >= 3 ? "size-3.5 -translate-x-0.5" : reactionWeight >= 1 ? "size-3 -translate-x-px" : "size-2.5",
+                  )}
+                  title={reactionWeight > 0 ? `${reactionWeight} reactions — a peak` : undefined}
+                />
+                <div className="mb-1 pt-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  {new Date(post.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  {i === latestIdx && <span className="ml-2 font-semibold text-emerald-500">latest</span>}
+                </div>
+                <div className="overflow-hidden rounded-xl border bg-card/50">
+                  <PostCard post={post} allReactions={reactions} onChange={load} />
+                </div>
               </div>
-              <div className="overflow-hidden rounded-xl border bg-card/50">
-                <PostCard post={post} allReactions={reactions} onChange={load} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
+
+      {canPost && slug && (
+        <Composer
+          placeholder={`Add the next stop on #${slug}…`}
+          defaultMode="markdown"
+          onSubmit={async (body, mode) => {
+            await api.createPost(body, mode, [slug]);
+            await Promise.all([load(), refreshFeed()]);
+          }}
+        />
+      )}
+      {!canPost && isShipped && (
+        <div className="border-t px-6 py-3 text-center text-xs text-muted-foreground">
+          🚢 This story is shipped — {daysBuilt} days, {track?.post_count} stops. Reactions and replies stay open.
+        </div>
+      )}
+      {!canPost && !isShipped && isPersonal && (
+        <div className="border-t px-6 py-3 text-center text-xs text-muted-foreground">
+          Only @{track?.owner?.handle} posts here — reply on a stop to join the conversation.
+        </div>
+      )}
     </div>
   );
 }

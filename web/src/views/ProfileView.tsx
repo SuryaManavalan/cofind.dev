@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Bot, Link as LinkIcon } from "lucide-react";
+import { ArrowLeft, Bot, Link as LinkIcon, Sparkles } from "lucide-react";
 import type { PostSummary } from "../types";
 import { api } from "../api";
 import { useFeed } from "../feed-context";
@@ -19,7 +19,9 @@ export default function ProfileView() {
   const [error, setError] = useState<string | null>(null);
 
   const member = members.find((m) => m.handle.toLowerCase() === handle?.toLowerCase());
-  const memberTracks = tracks.filter((t) => t.contributors.some((c) => c.handle.toLowerCase() === handle?.toLowerCase()));
+  const allMemberTracks = tracks.filter((t) => t.contributors.some((c) => c.handle.toLowerCase() === handle?.toLowerCase()));
+  const memberTracks = allMemberTracks.filter((t) => !t.shipped_at);
+  const shipped = allMemberTracks.filter((t) => !!t.shipped_at);
   const online = !!member?.last_active_at && Date.now() - member.last_active_at < 5 * 60 * 1000;
 
   const load = useCallback(async () => {
@@ -100,6 +102,36 @@ export default function ProfileView() {
                 </button>
               ))}
             </div>
+          )}
+          {shipped.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Shipping shelf</p>
+              <div className="flex flex-wrap gap-1.5">
+                {shipped.map((t) => {
+                  const days = Math.max(1, Math.round((t.shipped_at! - t.created_at) / 86400000));
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => navigate(`/t/${t.slug}`)}
+                      className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-left transition-colors hover:bg-emerald-500/20"
+                    >
+                      <span className="block text-xs font-semibold text-emerald-500">🚢 {t.title}</span>
+                      <span className="block text-[10px] text-muted-foreground">
+                        {days} {days === 1 ? "day" : "days"} · {t.post_count} stops
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {member && (
+            <button
+              onClick={() => navigate(`/graph?u=${member.handle}`)}
+              className="mt-3 flex items-center gap-1.5 text-xs text-brand hover:underline"
+            >
+              <Sparkles className="size-3" /> View their orbit in the constellation
+            </button>
           )}
           {member && (
             <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">

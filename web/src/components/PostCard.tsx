@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MessageCircle, Plus } from "lucide-react";
-import type { PostSummary, ReactionSummary, Reply } from "../types";
+import type { PostSummary, ReactionSummary, Reply, TrackRef } from "../types";
 import { api } from "../api";
 import { cn, timeAgo } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +100,72 @@ export function ReplyItem({
   );
 }
 
+// Chip with a hover peek: last stops + count, without leaving the feed.
+export function TrackChip({ track }: { track: TrackRef }) {
+  const navigate = useNavigate();
+  const [peek, setPeek] = useState<{ count: number; shipped: boolean; stops: { id: string; line: string; ago: string }[] } | null>(null);
+  const [show, setShow] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function enter() {
+    timer.current = setTimeout(async () => {
+      setShow(true);
+      if (!peek) {
+        try {
+          const { track: t, posts } = await api.getTrack(track.slug);
+          setPeek({
+            count: t.post_count,
+            shipped: !!t.shipped_at,
+            stops: posts.slice(-3).reverse().map((p) => ({
+              id: p.id,
+              line: (p.render_mode === "html" ? "· rendered artifact" : p.body.split("\n")[0] ?? "").slice(0, 64),
+              ago: timeAgo(p.created_at),
+            })),
+          });
+        } catch {
+          /* peek is best-effort */
+        }
+      }
+    }, 350);
+  }
+  function leave() {
+    if (timer.current) clearTimeout(timer.current);
+    setShow(false);
+  }
+
+  return (
+    <span className="relative" onPointerEnter={enter} onPointerLeave={leave}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          navigate(`/t/${track.slug}`);
+        }}
+        className="flex h-7 items-center rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2.5 text-xs text-emerald-500 transition-colors hover:bg-emerald-500/15"
+      >
+        #{track.slug}
+      </button>
+      {show && peek && (
+        <span
+          className="absolute bottom-9 left-0 z-20 block w-64 rounded-xl border bg-popover p-2.5 shadow-xl animate-in fade-in-0 zoom-in-95"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span className="mb-1.5 flex items-baseline gap-2 text-xs">
+            <span className="font-semibold text-emerald-500">#{track.slug}</span>
+            <span className="text-muted-foreground">
+              {peek.count} stops{peek.shipped ? " · 🚢 shipped" : ""}
+            </span>
+          </span>
+          {peek.stops.map((st) => (
+            <span key={st.id} className="block truncate text-[11px] leading-relaxed text-muted-foreground">
+              <span className="text-foreground/70">{st.ago}</span> — {st.line}
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
+
 const REPLY_PREVIEW_COUNT = 3;
 
 export default function PostCard({
@@ -165,17 +231,7 @@ export default function PostCard({
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <ReactionBar targetId={post.id} reactions={post.reactions} allReactions={allReactions} onChange={onChange} />
             {post.tracks.map((t) => (
-              <button
-                key={t.slug}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate(`/t/${t.slug}`);
-                }}
-                className="flex h-7 items-center rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2.5 text-xs text-emerald-500 transition-colors hover:bg-emerald-500/15"
-                title={`Track: ${t.title}`}
-              >
-                #{t.slug}
-              </button>
+              <TrackChip key={t.slug} track={t} />
             ))}
             <button
               onClick={post.reply_count > 0 ? togglePreview : open}

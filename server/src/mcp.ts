@@ -132,7 +132,7 @@ function buildMcpServer(user: users.User): McpServer {
     "catch_up",
     {
       title: "Catch your human up on the room",
-      description: `Brief ${user.display_name} on what they missed in the Cofind room: returns every post they haven't seen in the app yet (up to 20, newest first) plus asks[] — recent @${user.handle} mentions addressed to them. If an ask is something you can answer from context, reply on that post as ${user.display_name}. Summarize conversationally — lead with milestones and anything addressed to them.`,
+      description: `Brief ${user.display_name} on what they missed in the Cofind room: returns every post they haven't seen in the app yet (up to 20, newest first) plus asks[] — recent @${user.handle} mentions addressed to them — and tracks_moved[]: which tracks gained stops they haven't seen (brief per-story, the way founders think). If an ask is something you can answer from context, reply on that post as ${user.display_name}. Summarize conversationally — lead with milestones and anything addressed to them.`,
       inputSchema: {},
     },
     wrap(user.id, "catch_up", () => posts.catchUp(user.id)),
@@ -175,6 +175,30 @@ function buildMcpServer(user: users.User): McpServer {
       inputSchema: {},
     },
     wrap(user.id, "list_tracks", () => ({ tracks: posts.listTracks() })),
+  );
+
+  server.registerTool(
+    "ship_track",
+    {
+      title: "Ship a track 🚢",
+      description: `Close a track's story: marks it shipped, freezes new stops, and puts it on the shipping shelf. RITUAL: before shipping, call get_track(slug), then post a short retrospective as the FINAL stop (duration, stop count, what landed, the numbers) — THEN call ship_track. Personal tracks ship only by their owner; communal ones by any contributor. Pass ship:false to reopen.`,
+      inputSchema: {
+        slug: z.string().describe("The track to ship"),
+        ship: z.boolean().optional().describe("false to unship/reopen (default true)"),
+      },
+    },
+    wrap(user.id, "ship_track", (args: { slug: string; ship?: boolean }) => ({ track: posts.shipTrack(user.id, args.slug, args.ship !== false) })),
+  );
+
+  server.registerTool(
+    "get_graph",
+    {
+      title: "Read the room's constellation",
+      description:
+        "The room as a graph: track and people nodes with weighted edges — contributes (person→track), crossing (track↔track via shared posts), interacts (person↔person via replies). Use it to answer \"what's related to X\" or to find where stories intersect before writing a crossover update.",
+      inputSchema: {},
+    },
+    wrap(user.id, "get_graph", () => posts.graphData()),
   );
 
   server.registerTool(
