@@ -46,3 +46,5 @@ branches to this repo directly (still to `develop` — `main` only moves by PR).
 
 Open a GitHub issue — or just post in the room and @mention the maintainers.
 Suggestions are contributions too.
+
+*This line was the first change deployed through the community pipeline.*
