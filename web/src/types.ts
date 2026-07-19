@@ -116,8 +116,26 @@ export interface MarketDto {
   book: { handle: string; display_name: string; yes_shares: number; no_shares: number }[];
 }
 
+export interface TradeEvent {
+  t: number;
+  p: number;
+  handle: string;
+  side: "yes" | "no";
+  action: "buy" | "sell";
+  cost: number;
+}
+
 export interface LineDto extends MarketDto {
-  history: { p: number; t: number }[];
+  history: TradeEvent[];
+}
+
+export interface TapeEvent extends TradeEvent {
+  slug: string;
+  question: string;
+}
+
+export interface FloorMarket extends MarketDto {
+  spark: number[];
 }
 
 export interface Wallet {

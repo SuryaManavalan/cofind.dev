@@ -126,6 +126,7 @@ api.get("/graph", (c) => c.json(posts.graphData()));
 // --- The Line (ADR-023) ---
 api.get("/markets", (c) => c.json(market.listMarkets(c.get("user").id)));
 api.get("/wallet", (c) => c.json(market.wallet(c.get("user").id)));
+api.get("/markets-activity", (c) => c.json({ activity: market.recentActivity() }));
 api.get("/tracks-line/:id", (c) => c.json({ line: market.marketForTrack(c.req.param("id"), c.get("user").id) }));
 api.post("/markets/open", async (c) => {
   const { slug, target_at } = await c.req.json();

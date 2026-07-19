@@ -351,22 +351,54 @@ export function trade(
   return { market: toDto(getMarketRow(marketId), userId), shares, cost: costC };
 }
 
-export function listMarkets(viewerId: string): { markets: MarketDto[]; wallet: ReturnType<typeof wallet> } {
+export function listMarkets(viewerId: string): { markets: (MarketDto & { spark: number[] })[]; wallet: ReturnType<typeof wallet> } {
   const rows = db.prepare("SELECT * FROM markets ORDER BY (resolved_at IS NOT NULL), created_at DESC LIMIT 50").all() as MarketRow[];
-  return { markets: rows.map((r) => toDto(maybeResolve(r), viewerId)), wallet: wallet(viewerId) };
+  return {
+    markets: rows.map((r) => {
+      const resolved = maybeResolve(r);
+      const pts = db.prepare("SELECT price_after AS p FROM trades WHERE market_id = ? ORDER BY id DESC LIMIT 30").all(r.id) as { p: number }[];
+      return { ...toDto(resolved, viewerId), spark: [0.5, ...pts.reverse().map((x) => x.p)] };
+    }),
+    wallet: wallet(viewerId),
+  };
 }
 
-export function marketForTrack(trackId: string, viewerId: string): (MarketDto & { history: { p: number; t: number }[] }) | null {
+export interface TradeEvent {
+  t: number;
+  p: number; // price_yes after this trade
+  handle: string;
+  side: "yes" | "no";
+  action: "buy" | "sell";
+  cost: number; // conviction paid (positive) or received (negative)
+}
+
+export function marketForTrack(trackId: string, viewerId: string): (MarketDto & { history: TradeEvent[] }) | null {
   const row = db.prepare("SELECT * FROM markets WHERE track_id = ? ORDER BY created_at DESC LIMIT 1").get(trackId) as MarketRow | undefined;
   if (!row) return null;
   const resolved = maybeResolve(row);
-  const history = (
-    db.prepare("SELECT price_after AS p, created_at AS t FROM trades WHERE market_id = ? ORDER BY id ASC LIMIT 200").all(row.id) as {
-      p: number;
-      t: number;
-    }[]
-  );
-  return { ...toDto(resolved, viewerId), history };
+  const history = db
+    .prepare(
+      `SELECT tr.created_at AS t, tr.price_after AS p, u.handle, tr.side, tr.shares, tr.cost FROM trades tr
+       JOIN users u ON u.id = tr.user_id WHERE tr.market_id = ? ORDER BY tr.id ASC LIMIT 300`,
+    )
+    .all(row.id) as { t: number; p: number; handle: string; side: "yes" | "no"; shares: number; cost: number }[];
+  return {
+    ...toDto(resolved, viewerId),
+    history: history.map((h) => ({ t: h.t, p: h.p, handle: h.handle, side: h.side, action: h.shares >= 0 ? "buy" : "sell", cost: h.cost })),
+  };
+}
+
+// The tape: recent trades across every market, newest first — the Floor's pulse.
+export function recentActivity(limit = 30): { t: number; p: number; handle: string; side: string; action: string; cost: number; slug: string; question: string }[] {
+  return (
+    db
+      .prepare(
+        `SELECT tr.created_at AS t, tr.price_after AS p, u.handle, tr.side, tr.shares, tr.cost, k.slug, m.question FROM trades tr
+         JOIN users u ON u.id = tr.user_id JOIN markets m ON m.id = tr.market_id JOIN tracks k ON k.id = m.track_id
+         ORDER BY tr.id DESC LIMIT ?`,
+      )
+      .all(limit) as { t: number; p: number; handle: string; side: string; shares: number; cost: number; slug: string; question: string }[]
+  ).map((r) => ({ t: r.t, p: r.p, handle: r.handle, side: r.side, action: r.shares >= 0 ? "buy" : "sell", cost: r.cost, slug: r.slug, question: r.question }));
 }
 
 // Agent digest for catch_up: open lines at a glance, plus anything that paid
