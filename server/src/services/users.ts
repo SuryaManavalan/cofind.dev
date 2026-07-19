@@ -1,5 +1,6 @@
 import { db } from "../db.js";
 import { ApiError, hashPassword, newId, newSecret, sha256, verifyPassword } from "../util.js";
+import { grantSignupBonus, maybeDailyStipend } from "./market.js";
 
 const INVITE_CODE = process.env.COFIND_INVITE_CODE ?? "cofind-friends";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 90; // 90 days — small trusted room
@@ -28,6 +29,7 @@ export function touchPresence(userId: string): void {
   if (now - (lastBump.get(userId) ?? 0) < 60_000) return;
   lastBump.set(userId, now);
   db.prepare("UPDATE users SET last_active_at = ? WHERE id = ?").run(now, userId);
+  maybeDailyStipend(userId);
 }
 
 export function join(inviteCode: string, handle: string, displayName: string, password: string): { user: User; sessionToken: string } {
@@ -55,6 +57,7 @@ export function join(inviteCode: string, handle: string, displayName: string, pa
     hashPassword(password),
     user.created_at,
   );
+  grantSignupBonus(user.id);
   return { user, sessionToken: createSession(user.id) };
 }
 

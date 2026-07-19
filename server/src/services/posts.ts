@@ -1,5 +1,6 @@
 import { db } from "../db.js";
 import { ApiError, newId } from "../util.js";
+import * as market from "./market.js";
 
 export type RenderMode = "text" | "markdown" | "html";
 export const RENDER_MODES: RenderMode[] = ["text", "markdown", "html"];
@@ -256,6 +257,9 @@ export function createPost(
   ).run(id, authorId, body, renderMode, via, now, now, idempotencyKey ?? null);
   recordMentions("post", id, id, authorId, body);
   attachTracks(id, authorId, body, renderMode, trackSlugs);
+  // conviction: a stop on a track earns more than a loose post (ADR-023)
+  const onTrack = db.prepare("SELECT 1 FROM post_tracks WHERE post_id = ? LIMIT 1").get(id);
+  market.award(authorId, onTrack ? 5 : 2, onTrack ? "stop" : "post", id);
   return { post_id: id };
 }
 
@@ -316,6 +320,11 @@ export function react(userId: string, targetId: string, reaction: string): { ok:
     reaction,
     Date.now(),
   );
+  // conviction flows to the author when the room reacts (never to self-reacts)
+  const authorRow = db.prepare(`SELECT author_id FROM ${targetType === "post" ? "posts" : "replies"} WHERE id = ?`).get(targetId) as
+    | { author_id: string }
+    | undefined;
+  if (authorRow && authorRow.author_id !== userId) market.award(authorRow.author_id, 3, "reaction", targetId);
   return { ok: true, added: true };
 }
 
@@ -618,6 +627,10 @@ export function shipTrack(userId: string, slug: string, ship: boolean): TrackSum
   }
   const shippedAt = ship ? Date.now() : null;
   db.prepare("UPDATE tracks SET shipped_at = ? WHERE id = ?").run(shippedAt, row.id);
+  if (ship) {
+    for (const c of market.shipContributors(row.id)) market.award(c.id, 50, "ship", row.id);
+    market.resolveLineForShip(row.id);
+  }
   return trackSummary({ ...row, shipped_at: shippedAt });
 }
 

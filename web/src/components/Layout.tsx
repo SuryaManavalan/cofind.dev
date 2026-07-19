@@ -1,9 +1,12 @@
-import { useRef, useState } from "react";
-import { Activity, Bot, Flame, GitBranch, Home, LayoutGrid, Menu, Settings as SettingsIcon, Sparkles, X } from "lucide-react";
+import { useRef, useEffect, useState } from "react";
+import { Activity, Bot, Flame, GitBranch, Home, LayoutGrid, Menu, Settings as SettingsIcon, Sparkles, TrendingUp, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { User } from "../types";
 import { useFeed } from "../feed-context";
 import { cn, timeAgo } from "@/lib/utils";
+import { useSlotNumber } from "@/lib/useSlotNumber";
+import { api } from "../api";
+import type { MarketDto } from "../types";
 import { Button } from "@/components/ui/button";
 import Avatar from "./Avatar";
 import Settings from "./Settings";
@@ -82,6 +85,7 @@ function MembersRail() {
         </ul>
       </div>
 
+      <TheLineTicker />
       <MovingNow />
 
       <div>
@@ -136,6 +140,56 @@ function MovingNow() {
   );
 }
 
+// Conviction balance, always in the corner of your eye — spins when it changes.
+function WalletChip() {
+  const { wallet } = useFeed();
+  const bal = useSlotNumber(wallet?.balance ?? 0, { duration: 900 });
+  if (!wallet) return null;
+  return <span className="ml-auto rounded-full bg-brand/10 px-1.5 py-px text-[10px] font-semibold tabular-nums text-brand">{bal}</span>;
+}
+
+// The rail's ticker: lines with the biggest 24h swing — where the room disagrees.
+function TheLineTicker() {
+  const [movers, setMovers] = useState<MarketDto[]>([]);
+  const navigate = useNavigate();
+  useEffect(() => {
+    let live = true;
+    const load = () =>
+      api.markets().then((r) => {
+        if (live) setMovers(r.markets.filter((m) => !m.resolved_at).sort((a, b) => Math.abs(b.move_24h) - Math.abs(a.move_24h)).slice(0, 3));
+      }).catch(() => {});
+    load();
+    const t = setInterval(load, 45000);
+    return () => { live = false; clearInterval(t); };
+  }, []);
+  if (movers.length === 0) return null;
+  return (
+    <div>
+      <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <TrendingUp className="size-3.5 text-brand" /> The Line
+      </h2>
+      <ul className="space-y-1.5">
+        {movers.map((m) => (
+          <li key={m.id}>
+            <button
+              onClick={() => navigate(`/t/${m.track.slug}`)}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
+            >
+              <span className="truncate font-medium text-brand">#{m.track.slug}</span>
+              <span className="ml-auto shrink-0 tabular-nums text-foreground">{Math.round(m.price_yes * 100)}%</span>
+              {m.move_24h !== 0 && (
+                <span className={cn("shrink-0 tabular-nums", m.move_24h > 0 ? "text-emerald-500" : "text-destructive")}>
+                  {m.move_24h > 0 ? "▲" : "▼"}{Math.round(Math.abs(m.move_24h) * 100)}
+                </span>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // Mobile gets the same presence + agent-pulse signal as the desktop rail, one line tall.
 function MobilePulseStrip() {
   const { members, activity } = useFeed();
@@ -165,7 +219,7 @@ function FeedHeader() {
   const online = members.filter((m) => isOnline(m.last_active_at));
   const lastAgent = activity[0];
   const path = useLocation().pathname;
-  const title = path === "/gallery" ? "Gallery" : path === "/tracks" ? "Tracks" : path === "/graph" ? "Constellation" : "Feed";
+  const title = path === "/gallery" ? "Gallery" : path === "/tracks" ? "Tracks" : path === "/graph" ? "Constellation" : path === "/floor" ? "The Floor" : "Feed";
   return (
     <header className="hidden shrink-0 items-center justify-between border-b px-6 py-2.5 md:flex">
       <div className="flex items-center gap-2">
@@ -211,6 +265,7 @@ function MobileDrawer({
     { label: "Tracks", icon: <GitBranch />, to: "/tracks" },
     { label: "Gallery", icon: <LayoutGrid />, to: "/gallery" },
     { label: "Constellation", icon: <Sparkles />, to: "/graph" },
+    { label: "The Floor", icon: <TrendingUp />, to: "/floor" },
   ];
   return (
     <div className="fixed inset-0 z-40 md:hidden" onClick={onClose}>
@@ -339,7 +394,8 @@ export default function Layout({
   const onGallery = path === "/gallery";
   const onTracks = path === "/tracks";
   const onGraph = path === "/graph";
-  const onFeed = !onGallery && !onTracks && !onGraph;
+  const onFloor = path === "/floor";
+  const onFeed = !onGallery && !onTracks && !onGraph && !onFloor;
 
   return (
     <div className="flex h-dvh w-full justify-center" {...(!panel && !drawerOpen ? rootSwipe : {})}>
@@ -392,6 +448,15 @@ export default function Layout({
             onClick={() => navigate("/graph")}
           >
             <Sparkles /> Constellation
+          </Button>
+          <Button
+            variant={onFloor ? "secondary" : "ghost"}
+            className={cn("w-full justify-start", !onFloor && "text-muted-foreground")}
+            size="sm"
+            onClick={() => navigate("/floor")}
+          >
+            <TrendingUp /> The Floor
+            <WalletChip />
           </Button>
           <Button variant="ghost" className="w-full justify-start text-muted-foreground" size="sm" onClick={() => setShowSettings(true)}>
             <Bot /> Connect your agent

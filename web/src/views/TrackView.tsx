@@ -11,6 +11,8 @@ import Avatar from "../components/Avatar";
 import PostCard from "../components/PostCard";
 import PullToRefresh from "../components/PullToRefresh";
 import Composer from "../components/Composer";
+import LineWidget from "../components/LineWidget";
+import { fireworks } from "@/lib/juice";
 
 // A track is the story of one thing being built. Newest-first by default
 // (consistent with the whole app); "from the start" toggle for narrative reads.
@@ -74,6 +76,7 @@ export default function TrackView() {
     if (!confirm(verb)) return;
     const { track: updated } = await api.shipTrack(slug, !track.shipped_at);
     setTrack(updated);
+    if (updated.shipped_at) fireworks(1.5);
     refreshFeed();
   }
 
@@ -145,6 +148,8 @@ export default function TrackView() {
 
       <PullToRefresh onRefresh={load}>
         {error && <p className="px-6 py-8 text-sm text-destructive">{error}</p>}
+
+        {track && <LineWidget key={track.id} track={track} onChanged={refreshFeed} />}
 
         {track && (
           <div className="border-b px-4 py-3 sm:px-6">

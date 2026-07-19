@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import type { AgentActivity, Member, PostSummary, TrackSummary, User } from "./types";
+import type { AgentActivity, Member, PostSummary, TrackSummary, User, Wallet } from "./types";
 import { api } from "./api";
 
 const POLL_MS = 15_000; // v0 feed sync is polling (architecture doc §7); realtime comes later.
@@ -13,6 +13,7 @@ interface FeedState {
   members: Member[];
   activity: AgentActivity[];
   tracks: TrackSummary[];
+  wallet: Wallet | null;
   initialUnseen: Set<string>;
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
@@ -34,6 +35,7 @@ export function FeedProvider({ user, children }: { user: User; children: React.R
   const [members, setMembers] = useState<Member[]>([]);
   const [activity, setActivity] = useState<AgentActivity[]>([]);
   const [tracks, setTracks] = useState<TrackSummary[]>([]);
+  const [wallet, setWallet] = useState<Wallet | null>(null);
   const seenSent = useRef(new Set<string>());
   // Snapshot of what was unseen when the session opened — powers the
   // "caught up" divider even after we mark things seen.
@@ -43,6 +45,7 @@ export function FeedProvider({ user, children }: { user: User; children: React.R
     api.members().then((r) => setMembers(r.members)).catch(() => {});
     api.activity().then((r) => setActivity(r.activity)).catch(() => {});
     api.listTracks().then((r) => setTracks(r.tracks)).catch(() => {});
+    api.walletGet().then(setWallet).catch(() => {});
     const page = await api.feed();
     if (initialUnseen.current === null) {
       initialUnseen.current = new Set(page.posts.filter((p) => !p.seen_by_me).map((p) => p.id));
@@ -88,7 +91,7 @@ export function FeedProvider({ user, children }: { user: User; children: React.R
   }, [posts]);
 
   return (
-    <FeedContext.Provider value={{ me: user, posts, nextCursor, loadingMore, reactions, members, activity, tracks, initialUnseen: initialUnseen.current ?? new Set(), refresh, loadMore }}>
+    <FeedContext.Provider value={{ me: user, posts, nextCursor, loadingMore, reactions, members, activity, tracks, wallet, initialUnseen: initialUnseen.current ?? new Set(), refresh, loadMore }}>
       {children}
     </FeedContext.Provider>
   );

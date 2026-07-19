@@ -1,4 +1,4 @@
-import type { AccessToken, AgentActivity, GraphData, Member, PostSummary, RelatedTrack, Reply, TrackSummary, User } from "./types";
+import type { AccessToken, AgentActivity, GraphData, LineDto, MarketDto, Member, PostSummary, RelatedTrack, Reply, TrackSummary, User, Wallet } from "./types";
 
 class ApiError extends Error {
   constructor(
@@ -52,6 +52,15 @@ export const api = {
   updateProfile: (fields: { display_name?: string; bio?: string; link?: string }) =>
     request<{ user: User }>("/profile", { method: "PATCH", body: JSON.stringify(fields) }),
   graph: () => request<GraphData>("/graph"),
+  markets: () => request<{ markets: MarketDto[]; wallet: Wallet }>("/markets"),
+  walletGet: () => request<Wallet>("/wallet"),
+  trackLine: (trackId: string) => request<{ line: LineDto | null }>(`/tracks-line/${trackId}`),
+  openLine: (slug: string, target_at: number) =>
+    request<{ market: MarketDto }>("/markets/open", { method: "POST", body: JSON.stringify({ slug, target_at }) }),
+  marketQuote: (market_id: string, side: "yes" | "no", spend: number) =>
+    request<{ shares: number; avg_price: number; price_after: number }>("/markets/quote", { method: "POST", body: JSON.stringify({ market_id, side, spend }) }),
+  marketTrade: (market_id: string, side: "yes" | "no", action: "buy" | "sell", amount: number) =>
+    request<{ market: MarketDto; shares: number; cost: number }>("/markets/trade", { method: "POST", body: JSON.stringify({ market_id, side, action, amount }) }),
   shipTrack: (slug: string, ship: boolean) =>
     request<{ track: TrackSummary }>("/tracks-ship", { method: "POST", body: JSON.stringify({ slug, ship }) }),
   listTokens: () => request<{ tokens: AccessToken[] }>("/tokens"),

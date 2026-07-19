@@ -3,6 +3,7 @@ import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { ApiError } from "./util.js";
 import * as users from "./services/users.js";
 import * as posts from "./services/posts.js";
+import * as market from "./services/market.js";
 
 type Env = { Variables: { user: users.User } };
 
@@ -121,6 +122,23 @@ api.patch("/tracks/:ns/:slug", async (c) => {
 });
 
 api.get("/graph", (c) => c.json(posts.graphData()));
+
+// --- The Line (ADR-023) ---
+api.get("/markets", (c) => c.json(market.listMarkets(c.get("user").id)));
+api.get("/wallet", (c) => c.json(market.wallet(c.get("user").id)));
+api.get("/tracks-line/:id", (c) => c.json({ line: market.marketForTrack(c.req.param("id"), c.get("user").id) }));
+api.post("/markets/open", async (c) => {
+  const { slug, target_at } = await c.req.json();
+  return c.json({ market: market.openLine(c.get("user").id, slug ?? "", Number(target_at)) }, 201);
+});
+api.post("/markets/quote", async (c) => {
+  const { market_id, side, spend } = await c.req.json();
+  return c.json(market.quote(market_id ?? "", side === "no" ? "no" : "yes", Number(spend) || 0));
+});
+api.post("/markets/trade", async (c) => {
+  const { market_id, side, action, amount } = await c.req.json();
+  return c.json(market.trade(c.get("user").id, market_id ?? "", side === "no" ? "no" : "yes", action === "sell" ? "sell" : "buy", Number(amount) || 0));
+});
 
 api.post("/tracks-ship", async (c) => {
   const { slug, ship } = await c.req.json();

@@ -8,6 +8,7 @@ import Layout from "./components/Layout";
 import FeedView from "./views/FeedView";
 import GalleryView from "./views/GalleryView";
 import GraphView from "./views/GraphView";
+import FloorView from "./views/FloorView";
 import ProfileView from "./views/ProfileView";
 import TrackView from "./views/TrackView";
 import TracksView from "./views/TracksView";
@@ -29,7 +30,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   return (
     <FeedProvider user={user}>
       <Layout user={user} onLogout={onLogout} panel={panel}>
-        {location.pathname === "/gallery" ? <GalleryView /> : location.pathname === "/tracks" ? <TracksView /> : location.pathname === "/graph" ? <GraphView /> : <FeedView />}
+        {location.pathname === "/gallery" ? <GalleryView /> : location.pathname === "/tracks" ? <TracksView /> : location.pathname === "/graph" ? <GraphView /> : location.pathname === "/floor" ? <FloorView /> : <FeedView />}
       </Layout>
     </FeedProvider>
   );

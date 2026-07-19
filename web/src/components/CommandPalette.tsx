@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Command } from "cmdk";
-import { Bot, Copy, GitBranch, Home, KeyRound, LayoutGrid, LogOut, MessageSquare, PenLine, Search, Sparkles } from "lucide-react";
+import { Bot, Copy, GitBranch, Home, KeyRound, LayoutGrid, LogOut, MessageSquare, PenLine, Search, Sparkles, TrendingUp } from "lucide-react";
 import { useFeed } from "../feed-context";
 
 // ⌘K — table stakes for founder tools (Linear/Raycast idiom, per research theme C/D).
@@ -71,6 +71,9 @@ export default function CommandPalette({
             </Item>
             <Item onSelect={() => run(() => navigate("/graph"))}>
               <Sparkles /> Constellation
+            </Item>
+            <Item onSelect={() => run(() => navigate("/floor"))}>
+              <TrendingUp /> The Floor
             </Item>
             <Item onSelect={() => run(openSettings)}>
               <KeyRound /> Settings & agent tokens
