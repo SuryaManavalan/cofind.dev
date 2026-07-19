@@ -22,6 +22,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
         <Route path="/post/:id" element={<ThreadView />} />
         <Route path="/u/:handle" element={<ProfileView />} />
         <Route path="/t/:slug" element={<TrackView />} />
+        <Route path="/t/:ns/:slug" element={<TrackView />} />
       </Routes>
     ) : null;
   return (

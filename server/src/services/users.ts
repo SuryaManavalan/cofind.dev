@@ -33,6 +33,9 @@ export function touchPresence(userId: string): void {
 export function join(inviteCode: string, handle: string, displayName: string, password: string): { user: User; sessionToken: string } {
   if (inviteCode !== INVITE_CODE) throw new ApiError(403, "Invalid invite code");
   if (!/^[a-zA-Z0-9_]{2,24}$/.test(handle)) throw new ApiError(400, "Handle must be 2-24 chars, alphanumeric or underscore");
+  // "me" is track-namespace sugar (#me/slug); the rest prevent confusion.
+  if (["me", "admin", "cofind", "system", "all", "everyone", "dev"].includes(handle.toLowerCase()))
+    throw new ApiError(400, "That handle is reserved");
   if (!displayName.trim()) throw new ApiError(400, "Display name required");
   if (password.length < 8) throw new ApiError(400, "Password must be at least 8 characters");
 

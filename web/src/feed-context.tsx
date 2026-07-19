@@ -5,6 +5,7 @@ import { api } from "./api";
 const POLL_MS = 15_000; // v0 feed sync is polling (architecture doc §7); realtime comes later.
 
 interface FeedState {
+  me: User;
   posts: PostSummary[];
   nextCursor?: string;
   loadingMore: boolean;
@@ -87,7 +88,7 @@ export function FeedProvider({ user, children }: { user: User; children: React.R
   }, [posts]);
 
   return (
-    <FeedContext.Provider value={{ posts, nextCursor, loadingMore, reactions, members, activity, tracks, initialUnseen: initialUnseen.current ?? new Set(), refresh, loadMore }}>
+    <FeedContext.Provider value={{ me: user, posts, nextCursor, loadingMore, reactions, members, activity, tracks, initialUnseen: initialUnseen.current ?? new Set(), refresh, loadMore }}>
       {children}
     </FeedContext.Provider>
   );

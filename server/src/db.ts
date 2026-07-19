@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS tracks (
   title       TEXT NOT NULL,
   description TEXT,
   created_by  TEXT NOT NULL REFERENCES users(id),
+  owner_id    TEXT REFERENCES users(id),
   created_at  INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS post_tracks (
@@ -161,6 +162,9 @@ CREATE TABLE IF NOT EXISTS post_tracks (
 );
 CREATE INDEX IF NOT EXISTS idx_post_tracks_track ON post_tracks (track_id, created_at);
 `);
+
+// Personal tracks (ADR-021 amendment): owner_id set => only the owner's posts attach.
+addColumn("tracks", "owner_id TEXT REFERENCES users(id)");
 
 // Profiles (ADR-021): a line about you and a link, editable in Settings.
 addColumn("users", "bio TEXT");
