@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "./db.js";
 import { ApiError } from "./util.js";
 import * as users from "./services/users.js";
+import { userFromOAuthToken } from "./oauth.js";
 import * as posts from "./services/posts.js";
 
 // The MCP surface is small and verb-shaped (ADR-007): every tool is a thin
@@ -216,10 +217,14 @@ export const mcp = new Hono();
 mcp.all("/", async (c) => {
   const auth = c.req.header("Authorization");
   const token = auth?.startsWith("Bearer ") ? auth.slice("Bearer ".length) : null;
-  const user = token ? users.userFromAccessToken(token) : null;
+  // Two credentials resolve to the same principal (ADR-001): personal access
+  // tokens (ADR-010) and OAuth access tokens (ADR-019, the claude.ai path).
+  const user = token ? (users.userFromAccessToken(token) ?? userFromOAuthToken(token)) : null;
   if (!user) {
+    const origin = process.env.COFIND_PUBLIC_ORIGIN ?? "http://localhost:8787";
+    c.header("WWW-Authenticate", `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`);
     return c.json(
-      { jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized: pass a cofind personal access token as a Bearer token" }, id: null },
+      { jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized: authorize via OAuth or pass a cofind personal access token" }, id: null },
       401,
     );
   }

@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { api } from "./api.js";
 import { mcp } from "./mcp.js";
+import { oauth } from "./oauth.js";
 import { existsSync } from "node:fs";
 
 const app = new Hono();
@@ -12,6 +13,7 @@ app.use(logger());
 
 app.route("/api", api);
 app.route("/mcp", mcp);
+app.route("/", oauth);
 
 app.get("/healthz", (c) => c.json({ ok: true }));
 

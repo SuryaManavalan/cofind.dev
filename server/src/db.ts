@@ -108,6 +108,40 @@ addColumn("replies", "via TEXT NOT NULL DEFAULT 'web'");
 // Human presence (plan doc OPEN item, resolved): bumped by authed web activity.
 addColumn("users", "last_active_at INTEGER");
 
+// OAuth authorization server (ADR-019): the claude.ai connector path.
+// Coexists with access_tokens (PATs) per ADR-010's design.
+db.exec(`
+CREATE TABLE IF NOT EXISTS oauth_clients (
+  id                         TEXT PRIMARY KEY,
+  name                       TEXT NOT NULL,
+  redirect_uris              TEXT NOT NULL,
+  token_endpoint_auth_method TEXT NOT NULL DEFAULT 'none',
+  created_at                 INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_codes (
+  code_hash      TEXT PRIMARY KEY,
+  client_id      TEXT NOT NULL,
+  user_id        TEXT NOT NULL,
+  redirect_uri   TEXT NOT NULL,
+  code_challenge TEXT NOT NULL,
+  scope          TEXT,
+  expires_at     INTEGER NOT NULL,
+  used           INTEGER NOT NULL DEFAULT 0,
+  created_at     INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_tokens (
+  id           TEXT PRIMARY KEY,
+  token_hash   TEXT NOT NULL UNIQUE,
+  refresh_hash TEXT UNIQUE,
+  user_id      TEXT NOT NULL REFERENCES users(id),
+  client_id    TEXT NOT NULL,
+  scope        TEXT,
+  expires_at   INTEGER NOT NULL,
+  created_at   INTEGER NOT NULL,
+  last_used_at INTEGER
+);
+`);
+
 // Asks (ADR-017): @handle mentions, delivered to the mentioned member's agent via catch_up.
 db.exec(`
 CREATE TABLE IF NOT EXISTS mentions (
