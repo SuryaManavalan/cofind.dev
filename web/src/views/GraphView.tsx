@@ -246,7 +246,7 @@ export default function GraphView() {
         </div>
       </div>
 
-      <div ref={boxRef} className="relative flex-1 overflow-hidden">
+      <div ref={boxRef} data-no-swipe className="relative flex-1 overflow-hidden">
         <svg className="absolute inset-0 size-full select-none">
           {linksRef.current.map((l, i) => {
             const s = l.source as SimNode;
