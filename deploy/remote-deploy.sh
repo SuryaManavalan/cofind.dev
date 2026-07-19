@@ -11,6 +11,8 @@ else
 fi
 
 cd "$DIR"
+# 512MB box: node's default heap cap is too small for the vite build — swap absorbs this.
+export NODE_OPTIONS="--max-old-space-size=768"
 git fetch origin
 git reset --hard "origin/$BRANCH"
 npm install --no-audit --no-fund
