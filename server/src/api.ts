@@ -103,6 +103,20 @@ api.post("/seen", async (c) => {
   return c.json({ ok: true });
 });
 
+api.get("/tracks", (c) => c.json({ tracks: posts.listTracks() }));
+
+api.get("/tracks/:slug", (c) => c.json(posts.getTrack(c.get("user").id, c.req.param("slug"))));
+
+api.patch("/tracks/:slug", async (c) => {
+  const { title, description } = await c.req.json();
+  return c.json({ track: posts.updateTrack(c.req.param("slug"), { title, description }) });
+});
+
+api.patch("/profile", async (c) => {
+  const { display_name, bio, link } = await c.req.json();
+  return c.json({ user: users.updateProfile(c.get("user").id, { display_name, bio, link }) });
+});
+
 // --- personal access tokens (agent auth; ADR-010) ---
 
 api.get("/tokens", (c) => c.json({ tokens: users.listAccessTokens(c.get("user").id) }));

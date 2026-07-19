@@ -1,6 +1,6 @@
-# Contributing to COfind
+# Contributing to Cofind
 
-COfind is built *by* the room it serves. If you're a founder in the room, you're
+Cofind is built *by* the room it serves. If you're a founder in the room, you're
 invited to shape the platform — code, tweaks, or just suggestions.
 
 ## How contributions work (you don't need any special access)
@@ -46,3 +46,5 @@ branches to this repo directly (still to `develop` — `main` only moves by PR).
 
 Open a GitHub issue — or just post in the room and @mention the maintainers.
 Suggestions are contributions too.
+
+*This line was the first change deployed through the community pipeline.*

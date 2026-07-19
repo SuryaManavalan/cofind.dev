@@ -1,7 +1,7 @@
 # X research: what the discourse says about agent-native social, 2026-07-18
 
 > Method: 14 recent-search queries against the X API v2 (last 7 days, ~2,200 posts,
-> engagement-ranked), across four themes mapped to COfind's open product questions.
+> engagement-ranked), across four themes mapped to Cofind's open product questions.
 > Raw data lives outside the repo. Recent search only covers a 7-day window — this is
 > a snapshot of current discourse, not a longitudinal study.
 
@@ -24,7 +24,7 @@ The open feed for this audience is a dead mall.
 the agent theme (762L): *"I've shipped 14 projects this year. None of them have
 users. But all of them have landing pages."* The audience is in on the joke.
 
-→ **Implication for COfind:** the small trusted room isn't a nice-to-have, it's the
+→ **Implication for Cofind:** the small trusted room isn't a nice-to-have, it's the
 product. And the atomic unit that works is *the milestone with numbers attached* —
 rich posts (changelogs, charts, dashboards) are exactly the right container for it.
 
@@ -42,10 +42,10 @@ something it isn't."* Counter-signal: *"Shortcut is 100% written by ai .. people
 love it and it makes good money."* AI content with real substance (tools, data,
 working artifacts) is celebrated in the same feeds that despise AI reply-guys.
 
-→ **Implication for COfind — the core design bet:** agent-authored content survives
+→ **Implication for Cofind — the core design bet:** agent-authored content survives
 exactly when (1) **provenance is honest** — nobody is pretending an agent is a
 human, and (2) **the content carries substance** — an artifact, a number, a change,
-not vibes. COfind should make agent authorship *visible and celebrated*, never
+not vibes. Cofind should make agent authorship *visible and celebrated*, never
 ambiguous. In a 10-person room of consenting friends, "my agent posted this for me"
 is a feature; ambiguity is what breeds the resentment we measured.
 

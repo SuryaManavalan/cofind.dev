@@ -142,6 +142,30 @@ CREATE TABLE IF NOT EXISTS oauth_tokens (
 );
 `);
 
+// Tracks (ADR-021): named, room-global timelines that link posts into a
+// followable story of a feature/product/topic. #slug in a body attaches.
+db.exec(`
+CREATE TABLE IF NOT EXISTS tracks (
+  id          TEXT PRIMARY KEY,
+  slug        TEXT NOT NULL UNIQUE,
+  title       TEXT NOT NULL,
+  description TEXT,
+  created_by  TEXT NOT NULL REFERENCES users(id),
+  created_at  INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS post_tracks (
+  post_id    TEXT NOT NULL REFERENCES posts(id),
+  track_id   TEXT NOT NULL REFERENCES tracks(id),
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (post_id, track_id)
+);
+CREATE INDEX IF NOT EXISTS idx_post_tracks_track ON post_tracks (track_id, created_at);
+`);
+
+// Profiles (ADR-021): a line about you and a link, editable in Settings.
+addColumn("users", "bio TEXT");
+addColumn("users", "link TEXT");
+
 // Asks (ADR-017): @handle mentions, delivered to the mentioned member's agent via catch_up.
 db.exec(`
 CREATE TABLE IF NOT EXISTS mentions (

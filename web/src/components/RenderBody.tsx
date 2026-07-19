@@ -15,9 +15,25 @@ import type { RenderMode } from "../types";
 
 marked.setOptions({ gfm: true, breaks: true });
 
-// @mentions become styled, clickable spans in markdown too (asks, ADR-017).
+// @mentions (asks) and #tracks become styled, clickable spans in markdown too.
 marked.use({
   extensions: [
+    {
+      name: "track",
+      level: "inline",
+      start(src: string) {
+        return src.match(/#[a-z]/)?.index;
+      },
+      tokenizer(src: string) {
+        const match = /^#([a-z][a-z0-9-]{1,40})/.exec(src);
+        if (match) return { type: "track", raw: match[0], slug: match[1] };
+        return undefined;
+      },
+      renderer(token) {
+        const slug = (token as unknown as { slug: string }).slug;
+        return `<span data-track="${slug}">#${slug}</span>`;
+      },
+    },
     {
       name: "mention",
       level: "inline",
@@ -48,6 +64,20 @@ type Variant = "preview" | "full";
 
 const URL_RE = /(https?:\/\/[^\s<]+[^\s<.,;:!?')\]])/g;
 const MENTION_SPLIT_RE = /(@[a-zA-Z0-9_]{2,24})/g;
+const TRACK_SPLIT_RE = /(#[a-z][a-z0-9-]{1,40})/g;
+
+function withTracks(text: string, keyBase: string): React.ReactNode[] {
+  return text.split(TRACK_SPLIT_RE).map((chunk, j) =>
+    TRACK_SPLIT_RE.test(chunk) ? (
+      // A track link (ADR-021): the timeline of one thing being built.
+      <span key={`${keyBase}-t${j}`} data-track={chunk.slice(1)} title="Open this track's timeline">
+        {chunk}
+      </span>
+    ) : (
+      chunk
+    ),
+  );
+}
 
 function withMentions(text: string, keyBase: string): React.ReactNode[] {
   return text.split(MENTION_SPLIT_RE).map((chunk, j) =>
@@ -57,7 +87,7 @@ function withMentions(text: string, keyBase: string): React.ReactNode[] {
         {chunk}
       </span>
     ) : (
-      chunk
+      withTracks(chunk, keyBase)
     ),
   );
 }
@@ -126,7 +156,7 @@ const FULL_FRAME_MAX = 4000;
 
 // Strict CSP for the hostile frame: no network at all, inline style/script only,
 // data: images. Combined with sandbox (no allow-same-origin) the content can't
-// reach COfind's DOM, cookies, or tokens, and can't exfiltrate over the network.
+// reach Cofind's DOM, cookies, or tokens, and can't exfiltrate over the network.
 const FRAME_CSP = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:;";
 
 // Theme tokens flow into the hostile frame (ADR-018): post HTML styled with
@@ -262,10 +292,17 @@ export default function RenderBody({
   // Event delegation: any [data-mention] span (text or markdown) opens the
   // member's profile without triggering the surrounding card's navigation.
   const handleMentionClick = (e: React.MouseEvent) => {
-    const target = (e.target as HTMLElement).closest?.("[data-mention]") as HTMLElement | null;
-    if (target?.dataset.mention) {
+    const el = e.target as HTMLElement;
+    const mention = el.closest?.("[data-mention]") as HTMLElement | null;
+    if (mention?.dataset.mention) {
       e.stopPropagation();
-      navigate(`/u/${target.dataset.mention}`);
+      navigate(`/u/${mention.dataset.mention}`);
+      return;
+    }
+    const track = el.closest?.("[data-track]") as HTMLElement | null;
+    if (track?.dataset.track) {
+      e.stopPropagation();
+      navigate(`/t/${track.dataset.track}`);
     }
   };
   const wrapped = <div onClick={handleMentionClick}>{inner}</div>;

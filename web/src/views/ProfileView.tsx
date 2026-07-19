@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Bot } from "lucide-react";
+import { ArrowLeft, Bot, Link as LinkIcon } from "lucide-react";
 import type { PostSummary } from "../types";
 import { api } from "../api";
 import { useFeed } from "../feed-context";
@@ -14,11 +14,12 @@ import PostCard from "../components/PostCard";
 export default function ProfileView() {
   const { handle } = useParams<{ handle: string }>();
   const navigate = useNavigate();
-  const { members, reactions } = useFeed();
+  const { members, reactions, tracks } = useFeed();
   const [posts, setPosts] = useState<PostSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const member = members.find((m) => m.handle.toLowerCase() === handle?.toLowerCase());
+  const memberTracks = tracks.filter((t) => t.contributors.some((c) => c.handle.toLowerCase() === handle?.toLowerCase()));
   const online = !!member?.last_active_at && Date.now() - member.last_active_at < 5 * 60 * 1000;
 
   const load = useCallback(async () => {
@@ -74,6 +75,31 @@ export default function ProfileView() {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No member with this handle.</p>
+          )}
+          {member?.bio && <p className="mt-3 text-sm leading-relaxed">{member.bio}</p>}
+          {member?.link && (
+            <a
+              href={member.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1.5 flex items-center gap-1.5 text-xs text-brand hover:underline"
+            >
+              <LinkIcon className="size-3" />
+              {member.link.replace(/^https?:\/\//, "")}
+            </a>
+          )}
+          {memberTracks.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {memberTracks.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => navigate(`/t/${t.slug}`)}
+                  className="rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2.5 py-1 text-xs text-emerald-500 transition-colors hover:bg-emerald-500/15"
+                >
+                  #{t.slug}
+                </button>
+              ))}
+            </div>
           )}
           {member && (
             <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">

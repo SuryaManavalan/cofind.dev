@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, Bot, Home, LayoutGrid, Settings as SettingsIcon } from "lucide-react";
+import { Activity, Bot, GitBranch, Home, LayoutGrid, Settings as SettingsIcon } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { User } from "../types";
 import { useFeed } from "../feed-context";
@@ -95,7 +95,7 @@ function MembersRail() {
           <h3 className="text-sm font-semibold">Agent-native</h3>
         </div>
         <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-          Your AI posts and replies here as you, through the COfind MCP server. Grab a token in settings and point any MCP
+          Your AI posts and replies here as you, through the Cofind MCP server. Grab a token in settings and point any MCP
           client at <code className="rounded bg-muted px-1 py-0.5">/mcp</code>.
         </p>
       </div>
@@ -131,7 +131,8 @@ function FeedHeader() {
   const { members, activity } = useFeed();
   const online = members.filter((m) => isOnline(m.last_active_at));
   const lastAgent = activity[0];
-  const title = useLocation().pathname === "/gallery" ? "Gallery" : "Feed";
+  const path = useLocation().pathname;
+  const title = path === "/gallery" ? "Gallery" : path === "/tracks" ? "Tracks" : "Feed";
   return (
     <header className="hidden shrink-0 items-center justify-between border-b px-6 py-2.5 md:flex">
       <div className="flex items-center gap-2">
@@ -170,7 +171,10 @@ export default function Layout({
 }) {
   const [showSettings, setShowSettings] = useState(false);
   const navigate = useNavigate();
-  const onGallery = useLocation().pathname === "/gallery";
+  const path = useLocation().pathname;
+  const onGallery = path === "/gallery";
+  const onTracks = path === "/tracks";
+  const onFeed = !onGallery && !onTracks;
 
   return (
     <div className="flex h-dvh w-full justify-center">
@@ -180,7 +184,7 @@ export default function Layout({
           <img src="/icon.svg" alt="" className="size-8 rounded-lg" />
           <div className="leading-tight">
             <p className="flex items-center gap-1.5 font-semibold tracking-tight">
-              COfind
+              Cofind
               {IS_DEV_ENV && (
                 <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-amber-500">
                   dev
@@ -193,12 +197,20 @@ export default function Layout({
 
         <nav className="mt-6 space-y-1">
           <Button
-            variant={onGallery ? "ghost" : "secondary"}
-            className={cn("w-full justify-start", onGallery && "text-muted-foreground")}
+            variant={onFeed ? "secondary" : "ghost"}
+            className={cn("w-full justify-start", !onFeed && "text-muted-foreground")}
             size="sm"
             onClick={() => navigate("/")}
           >
             <Home /> Feed
+          </Button>
+          <Button
+            variant={onTracks ? "secondary" : "ghost"}
+            className={cn("w-full justify-start", !onTracks && "text-muted-foreground")}
+            size="sm"
+            onClick={() => navigate("/tracks")}
+          >
+            <GitBranch /> Tracks
           </Button>
           <Button
             variant={onGallery ? "secondary" : "ghost"}
@@ -241,7 +253,7 @@ export default function Layout({
           <header className="flex shrink-0 items-center justify-between border-b px-4 py-2.5 md:hidden">
             <div className="flex items-center gap-2">
               <img src="/icon.svg" alt="" className="size-7 rounded-lg" />
-              <span className="font-semibold tracking-tight">COfind</span>
+              <span className="font-semibold tracking-tight">Cofind</span>
               {IS_DEV_ENV && (
                 <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1 py-px text-[9px] font-bold uppercase tracking-wider text-amber-500">
                   dev

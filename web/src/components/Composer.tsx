@@ -27,8 +27,8 @@ function AgentDraftDialog({
   // One-directional handoff (ADR-006): context goes *into* the agent; the write
   // comes back server-side through MCP. Nothing round-trips through this UI.
   const prompt = postId
-    ? `Use the COfind MCP to reply to post ${postId}. Call get_post first to read the thread, then draft a reply in my voice and call reply. Keep it concrete and warm — this is a small room of friends.`
-    : `Use the COfind MCP to post an update for me. Ask me what I shipped or learned today, then call create_post — render_mode "markdown" usually, or "html" if a rendered artifact (chart, changelog, demo) tells it better. For html, mark one element data-cofind="card" as the compact card the feed shows; the full page renders when the post is opened. The room values real numbers and artifacts over vibes.`;
+    ? `Use the Cofind MCP to reply to post ${postId}. Call get_post first to read the thread, then draft a reply in my voice and call reply. Keep it concrete and warm — this is a small room of friends.`
+    : `Use the Cofind MCP to post an update for me. Ask me what I shipped or learned today, then call create_post — render_mode "markdown" usually, or "html" if a rendered artifact (chart, changelog, demo) tells it better. For html, mark one element data-cofind="card" as the compact card the feed shows; the full page renders when the post is opened. The room values real numbers and artifacts over vibes.`;
 
   async function copy() {
     await navigator.clipboard.writeText(prompt);
@@ -44,7 +44,7 @@ function AgentDraftDialog({
             <Bot className="size-5 text-brand" /> {postId ? "Reply with your agent" : "Draft with your agent"}
           </DialogTitle>
           <DialogDescription>
-            Paste this into your agent (Claude, connected to the COfind MCP). It will {postId ? "read the thread and reply" : "interview you and post"}{" "}
+            Paste this into your agent (Claude, connected to the Cofind MCP). It will {postId ? "read the thread and reply" : "interview you and post"}{" "}
             as you — the post lands here on next sync and shows an <span className="text-brand">agent</span> chip.
           </DialogDescription>
         </DialogHeader>
@@ -80,40 +80,56 @@ export default function Composer({
   const [previewing, setPreviewing] = useState(false);
   const [agentDialog, setAgentDialog] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { members } = useFeed();
+  const { members, tracks } = useFeed();
 
-  // @mention autocomplete: track an in-progress "@quer" token before the caret.
-  const [mention, setMention] = useState<{ query: string; start: number } | null>(null);
+  // @mention and #track autocomplete: track an in-progress token before the caret.
+  const [mention, setMention] = useState<{ kind: "@" | "#"; query: string; start: number } | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
 
-  const suggestions: Member[] = mention
-    ? members
-        .filter(
-          (m) =>
-            m.handle.toLowerCase().startsWith(mention.query.toLowerCase()) ||
-            m.display_name.toLowerCase().startsWith(mention.query.toLowerCase()),
-        )
-        .slice(0, 5)
-    : [];
+  interface Pick { key: string; insert: string; label: string; sub: string; member?: Member; isNew?: boolean }
+  const suggestions: Pick[] = !mention
+    ? []
+    : mention.kind === "@"
+      ? members
+          .filter(
+            (m) =>
+              m.handle.toLowerCase().startsWith(mention.query.toLowerCase()) ||
+              m.display_name.toLowerCase().startsWith(mention.query.toLowerCase()),
+          )
+          .slice(0, 5)
+          .map((m) => ({ key: m.id, insert: `@${m.handle}`, label: m.display_name, sub: `@${m.handle}`, member: m }))
+      : [
+          ...tracks
+            .filter((t) => t.slug.startsWith(mention.query.toLowerCase()) || t.title.toLowerCase().includes(mention.query.toLowerCase()))
+            .slice(0, 5)
+            .map((t) => ({ key: t.id, insert: `#${t.slug}`, label: t.title, sub: `#${t.slug} · ${t.post_count} updates` })),
+          ...(/^[a-z][a-z0-9-]{1,40}$/.test(mention.query) && !tracks.some((t) => t.slug === mention.query)
+            ? [{ key: "new", insert: `#${mention.query}`, label: `Start track #${mention.query}`, sub: "new timeline", isNew: true }]
+            : []),
+        ];
 
   function syncMention(el: HTMLTextAreaElement) {
     const upToCaret = el.value.slice(0, el.selectionStart ?? el.value.length);
-    const match = /(?:^|[\s(])@([a-zA-Z0-9_]{0,24})$/.exec(upToCaret);
-    if (match) {
-      setMention({ query: match[1] ?? "", start: upToCaret.length - (match[1]?.length ?? 0) - 1 });
+    const at = /(?:^|[\s(])@([a-zA-Z0-9_]{0,24})$/.exec(upToCaret);
+    const hash = /(?:^|[\s(])#([a-z0-9-]{0,40})$/.exec(upToCaret);
+    if (at) {
+      setMention({ kind: "@", query: at[1] ?? "", start: upToCaret.length - (at[1]?.length ?? 0) - 1 });
+      setMentionIndex(0);
+    } else if (hash && mode !== "html") {
+      setMention({ kind: "#", query: hash[1] ?? "", start: upToCaret.length - (hash[1]?.length ?? 0) - 1 });
       setMentionIndex(0);
     } else {
       setMention(null);
     }
   }
 
-  function pickMention(member: Member) {
+  function pickMention(pick: Pick) {
     if (!mention) return;
     const after = body.slice(mention.start + 1 + mention.query.length);
-    const next = `${body.slice(0, mention.start)}@${member.handle} ${after}`;
+    const next = `${body.slice(0, mention.start)}${pick.insert} ${after}`;
     setBody(next);
     setMention(null);
-    const caret = mention.start + member.handle.length + 2;
+    const caret = mention.start + pick.insert.length + 1;
     requestAnimationFrame(() => {
       const el = textareaRef.current;
       if (el) {
@@ -169,14 +185,14 @@ export default function Composer({
           {mention && suggestions.length > 0 && (
             <div className="absolute bottom-[calc(100%+0.5rem)] left-0 z-20 w-72 overflow-hidden rounded-xl border bg-popover p-1 shadow-xl animate-in fade-in-0 zoom-in-95">
               <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Ask someone — their agent gets it via catch_up
+                {mention.kind === "@" ? "Ask someone — their agent gets it via catch_up" : "Link to a track — the story of one thing"}
               </p>
-              {suggestions.map((m, i) => (
+              {suggestions.map((p, i) => (
                 <button
-                  key={m.id}
+                  key={p.key}
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    pickMention(m);
+                    pickMention(p);
                   }}
                   onMouseEnter={() => setMentionIndex(i)}
                   className={cn(
@@ -184,9 +200,13 @@ export default function Composer({
                     i === mentionIndex && "bg-accent",
                   )}
                 >
-                  <Avatar handle={m.handle} name={m.display_name} className="size-6 text-[10px]" />
-                  <span className="truncate text-sm font-medium">{m.display_name}</span>
-                  <span className="truncate text-xs text-muted-foreground">@{m.handle}</span>
+                  {p.member ? (
+                    <Avatar handle={p.member.handle} name={p.member.display_name} className="size-6 text-[10px]" />
+                  ) : (
+                    <span className={cn("flex size-6 items-center justify-center rounded-full border text-xs", p.isNew ? "text-emerald-500 border-emerald-500/40" : "text-emerald-500")}>#</span>
+                  )}
+                  <span className="truncate text-sm font-medium">{p.label}</span>
+                  <span className="truncate text-xs text-muted-foreground">{p.sub}</span>
                 </button>
               ))}
             </div>

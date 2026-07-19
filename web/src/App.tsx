@@ -8,6 +8,8 @@ import Layout from "./components/Layout";
 import FeedView from "./views/FeedView";
 import GalleryView from "./views/GalleryView";
 import ProfileView from "./views/ProfileView";
+import TrackView from "./views/TrackView";
+import TracksView from "./views/TracksView";
 import ThreadView from "./views/ThreadView";
 
 // The feed stays mounted underneath the thread overlay, so going "back" from a
@@ -15,16 +17,17 @@ import ThreadView from "./views/ThreadView";
 function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   const location = useLocation();
   const panel =
-    location.pathname.startsWith("/post/") || location.pathname.startsWith("/u/") ? (
+    location.pathname.startsWith("/post/") || location.pathname.startsWith("/u/") || location.pathname.startsWith("/t/") ? (
       <Routes>
         <Route path="/post/:id" element={<ThreadView />} />
         <Route path="/u/:handle" element={<ProfileView />} />
+        <Route path="/t/:slug" element={<TrackView />} />
       </Routes>
     ) : null;
   return (
     <FeedProvider user={user}>
       <Layout user={user} onLogout={onLogout} panel={panel}>
-        {location.pathname === "/gallery" ? <GalleryView /> : <FeedView />}
+        {location.pathname === "/gallery" ? <GalleryView /> : location.pathname === "/tracks" ? <TracksView /> : <FeedView />}
       </Layout>
     </FeedProvider>
   );

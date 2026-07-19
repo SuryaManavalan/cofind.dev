@@ -6,6 +6,8 @@ export interface User {
   handle: string;
   display_name: string;
   created_at: number;
+  bio?: string | null;
+  link?: string | null;
 }
 
 export interface Author {
@@ -31,6 +33,23 @@ export interface PostSummary {
   reply_count: number;
   reactions: ReactionSummary[];
   seen_by_me: boolean;
+  tracks: TrackRef[];
+}
+
+export interface TrackRef {
+  slug: string;
+  title: string;
+}
+
+export interface TrackSummary {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  created_at: number;
+  post_count: number;
+  last_post_at: number | null;
+  contributors: Author[];
 }
 
 export interface Reply {
