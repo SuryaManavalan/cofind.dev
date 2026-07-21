@@ -4,7 +4,9 @@ import { Pause, Play } from "lucide-react";
 import * as d3 from "d3-force";
 import type { GraphData } from "../types";
 import { api } from "../api";
+import { useFeed } from "../feed-context";
 import { Button } from "@/components/ui/button";
+import { PixelGrid } from "../components/Avatar";
 
 // The constellation (ADR-022): the room as a living graph. Tracks and people
 // as nodes, weighted edges from contribution / crossings / interaction.
@@ -52,6 +54,12 @@ export default function GraphView() {
   useEffect(() => {
     api.graph().then(setData);
   }, []);
+
+  const { members } = useFeed();
+  const avatarByHandle = useMemo(
+    () => new Map(members.map((m) => [m.handle.toLowerCase(), m.avatar ?? null])),
+    [members],
+  );
 
   const [t0, t1] = useMemo(() => {
     if (!data) return [0, 1];
@@ -285,17 +293,26 @@ export default function GraphView() {
               title={`${n.label} · ${n.sub}`}
             >
               {n.kind === "person" ? (
-                <span
-                  className="flex items-center justify-center rounded-full font-semibold text-white ring-2 ring-background"
-                  style={{
-                    width: n.size * 2,
-                    height: n.size * 2,
-                    fontSize: n.size * 0.8,
-                    background: `linear-gradient(135deg, oklch(0.55 0.13 ${hueFor(n.handle!)}), oklch(0.42 0.11 ${hueFor(n.handle!) + 40}))`,
-                  }}
-                >
-                  {n.label.slice(0, 1).toUpperCase()}
-                </span>
+                avatarByHandle.get(n.handle!.toLowerCase()) ? (
+                  <span
+                    className="block overflow-hidden rounded-full bg-secondary ring-2 ring-background"
+                    style={{ width: n.size * 2, height: n.size * 2 }}
+                  >
+                    <PixelGrid avatar={avatarByHandle.get(n.handle!.toLowerCase())!} />
+                  </span>
+                ) : (
+                  <span
+                    className="flex items-center justify-center rounded-full font-semibold text-white ring-2 ring-background"
+                    style={{
+                      width: n.size * 2,
+                      height: n.size * 2,
+                      fontSize: n.size * 0.8,
+                      background: `linear-gradient(135deg, oklch(0.55 0.13 ${hueFor(n.handle!)}), oklch(0.42 0.11 ${hueFor(n.handle!) + 40}))`,
+                    }}
+                  >
+                    {n.label.slice(0, 1).toUpperCase()}
+                  </span>
+                )
               ) : (
                 <span
                   className="rounded-full border-2"
