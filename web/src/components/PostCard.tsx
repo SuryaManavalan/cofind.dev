@@ -50,8 +50,9 @@ export function ReactionBar({
         >
           {REACTION_ICONS[r.reaction] ? (
             (() => {
-              const RIcon = REACTION_ICONS[r.reaction]!.Icon;
-              return <RIcon className="size-3.5" />;
+              const meta = REACTION_ICONS[r.reaction]!;
+              const RIcon = meta.Icon;
+              return <RIcon className={cn("size-3.5", meta.color)} />;
             })()
           ) : (
             <span className="text-sm leading-none">{r.reaction}</span>
@@ -77,9 +78,9 @@ export function ReactionBar({
                   key={emoji}
                   onClick={(e) => toggle(emoji, e)}
                   title={meta?.label ?? emoji}
-                  className="rounded-lg p-2 leading-none text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  className="rounded-lg p-2 leading-none transition-all hover:bg-accent active:scale-90"
                 >
-                  {RIcon ? <RIcon className="size-4.5" /> : <span className="text-lg">{emoji}</span>}
+                  {RIcon ? <RIcon className={cn("size-4.5", meta!.color)} /> : <span className="text-lg">{emoji}</span>}
                 </button>
               );
             })}

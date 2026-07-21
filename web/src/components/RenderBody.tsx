@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { Maximize2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { RenderMode } from "../types";
 
 // THE rendering pipeline (architecture doc §4). Every body from every write path
@@ -234,6 +235,11 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(PREVIEW_FRAME_MAX);
   const [boxWidth, setBoxWidth] = useState(0);
+  // The frame's document paints a default-white canvas for a beat before the
+  // injected dark styles parse — a bright flash on every load. Keep the iframe
+  // invisible until its measurement script reports in (content is styled by
+  // then), showing a theme-colored skeleton instead.
+  const [ready, setReady] = useState(false);
   const [themeCss, setThemeCss] = useState(frameThemeCss);
 
   useEffect(() => {
@@ -268,6 +274,7 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
     const onMessage = (e: MessageEvent) => {
       if (e.source === iframeRef.current?.contentWindow && typeof e.data?.cofindFrameHeight === "number") {
         setContentHeight(Math.max(e.data.cofindFrameHeight, 48));
+        setReady(true);
       }
     };
     window.addEventListener("message", onMessage);
@@ -290,7 +297,7 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
       // case, but no same-origin, no top-navigation, no forms, no popups.
       sandbox="allow-scripts"
       srcDoc={`${FRAME_PRELUDE}<style>${themeCss}</style>${previewCss}${frameBody}`}
-      className="rounded-lg border bg-muted/40 transition-[height]"
+      className={cn("rounded-lg border bg-muted/40 transition-opacity duration-200", ready ? "opacity-100" : "opacity-0")}
       style={
         variant === "preview" && logicalWidth
           ? { width: logicalWidth, height: frameHeight, transform: `scale(${scale})`, transformOrigin: "top left" }
@@ -302,10 +309,16 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
 
   return (
     <div className="relative" ref={wrapRef}>
+      {!ready && (
+        <div
+          className="absolute inset-x-0 top-0 animate-pulse rounded-lg border bg-muted/50"
+          style={{ height: (variant === "preview" ? Math.min(frameHeight, 140) : Math.min(frameHeight, 220)) }}
+        />
+      )}
       {variant === "preview" ? (
         // Scaled poster: the outer box occupies the on-screen (scaled) size and
         // clips the transform overflow; the iframe is laid out at design width.
-        <div className="overflow-hidden" style={{ height: frameHeight * scale }}>
+        <div className="overflow-hidden" style={{ height: ready ? frameHeight * scale : Math.min(frameHeight, 140) }}>
           {iframe}
         </div>
       ) : (
