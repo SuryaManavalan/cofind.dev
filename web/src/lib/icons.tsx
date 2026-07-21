@@ -19,13 +19,14 @@ import {
 
 type Icon = ComponentType<{ className?: string; size?: number | string }>;
 
-// Curated reactions: stored as emoji strings, rendered as icons.
-export const REACTION_ICONS: Record<string, { Icon: Icon; label: string }> = {
-  "🚢": { Icon: RiShip2Line, label: "ship it" },
-  "🧠": { Icon: RiBrainLine, label: "big brain" },
-  "🔥": { Icon: RiFireLine, label: "fire" },
-  "👀": { Icon: RiEyeLine, label: "watching" },
-  "🤝": { Icon: RiShakeHandsLine, label: "count me in" },
+// Curated reactions: stored as emoji strings, rendered as icons — each with
+// its own theme-token color so the set reads at a glance.
+export const REACTION_ICONS: Record<string, { Icon: Icon; label: string; color: string }> = {
+  "🚢": { Icon: RiShip2Line, label: "ship it", color: "text-success" },
+  "🧠": { Icon: RiBrainLine, label: "big brain", color: "text-brand" },
+  "🔥": { Icon: RiFireLine, label: "fire", color: "text-warning" },
+  "👀": { Icon: RiEyeLine, label: "watching", color: "text-foreground/70" },
+  "🤝": { Icon: RiShakeHandsLine, label: "count me in", color: "text-destructive" },
 };
 
 // Vibes (ADR-024): the five emotional textures.

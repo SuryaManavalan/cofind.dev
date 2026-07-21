@@ -36,9 +36,13 @@ function ensureCanvas() {
   ctx = canvas.getContext("2d");
   const resize = () => {
     if (!canvas) return;
+    // Explicit CSS size is required: without it iOS displays the canvas at its
+    // retina intrinsic size (3x the viewport), pushing every burst off screen.
+    canvas.style.width = `${innerWidth}px`;
+    canvas.style.height = `${innerHeight}px`;
     canvas.width = innerWidth * devicePixelRatio;
     canvas.height = innerHeight * devicePixelRatio;
-    ctx?.scale(devicePixelRatio, devicePixelRatio);
+    ctx?.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
   };
   resize();
   addEventListener("resize", resize);
@@ -46,7 +50,7 @@ function ensureCanvas() {
 
 function loop() {
   if (!ctx || !canvas) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
   particles = particles.filter((p) => p.life < p.ttl);
   if (particles.length === 0) {
     cancelAnimationFrame(raf);
