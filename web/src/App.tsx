@@ -13,6 +13,7 @@ import ProfileView from "./views/ProfileView";
 import TrackView from "./views/TrackView";
 import TracksView from "./views/TracksView";
 import ThreadView from "./views/ThreadView";
+import BazaarView from "./views/BazaarView";
 
 // The feed stays mounted underneath the thread overlay, so going "back" from a
 // thread returns to the exact scroll position — Twitter-style navigation.
@@ -30,7 +31,7 @@ function Shell({ user, onLogout }: { user: User; onLogout: () => void }) {
   return (
     <FeedProvider user={user}>
       <Layout user={user} onLogout={onLogout} panel={panel}>
-        {location.pathname === "/gallery" ? <GalleryView /> : location.pathname === "/tracks" ? <TracksView /> : location.pathname === "/graph" ? <GraphView /> : location.pathname === "/floor" ? <FloorView /> : <FeedView />}
+        {location.pathname === "/gallery" ? <GalleryView /> : location.pathname === "/tracks" ? <TracksView /> : location.pathname === "/graph" ? <GraphView /> : location.pathname === "/floor" ? <FloorView /> : location.pathname === "/bazaar" ? <BazaarView /> : <FeedView />}
       </Layout>
     </FeedProvider>
   );

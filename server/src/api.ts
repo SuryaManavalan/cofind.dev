@@ -5,6 +5,7 @@ import * as users from "./services/users.js";
 import * as posts from "./services/posts.js";
 import * as market from "./services/market.js";
 import * as resonance from "./services/resonance.js";
+import * as bazaar from "./services/bazaar.js";
 
 type Env = { Variables: { user: users.User } };
 
@@ -64,7 +65,10 @@ api.post("/auth/logout", (c) => {
 
 api.get("/me", (c) => c.json({ user: c.get("user") }));
 
-api.get("/members", (c) => c.json({ members: users.listMembers() }));
+api.get("/members", (c) => {
+  const avatars = bazaar.avatarsAll();
+  return c.json({ members: users.listMembers().map((m) => ({ ...m, avatar: avatars[m.id] ?? null })) });
+});
 
 api.get("/activity", (c) => c.json({ activity: users.recentAgentActivity() }));
 
@@ -143,6 +147,24 @@ api.post("/brief", async (c) => {
   return c.json(resonance.briefAgent(c.get("user").id, handle ?? "", note ?? "", post_id), 201);
 });
 api.get("/weather", (c) => c.json(resonance.roomWeather()));
+
+// --- The Bazaar: conviction marketplace ---
+api.get("/bazaar", (c) => {
+  const userId = c.get("user").id;
+  return c.json({
+    items: bazaar.catalog(),
+    inventory: bazaar.inventoryOf(userId),
+    avatar: bazaar.avatarOf(userId),
+  });
+});
+api.post("/bazaar/buy", async (c) => {
+  const { item_id, qty } = await c.req.json();
+  return c.json(bazaar.buy(c.get("user").id, item_id ?? "", Number(qty ?? 1)));
+});
+api.put("/avatar", async (c) => {
+  const { avatar } = await c.req.json();
+  return c.json(bazaar.saveAvatar(c.get("user").id, avatar ?? null));
+});
 api.get("/tracks-line/:id", (c) => c.json({ line: market.marketForTrack(c.req.param("id"), c.get("user").id) }));
 api.post("/markets/open", async (c) => {
   const { slug, target_at } = await c.req.json();

@@ -1,4 +1,4 @@
-import type { AccessToken, AgentActivity, GraphData, FloorMarket, LineDto, MarketDto, TapeEvent, Toast, Member, PostSummary, RelatedTrack, Reply, TrackSummary, User, Wallet } from "./types";
+import type { AccessToken, AgentActivity, BazaarItem, GraphData, FloorMarket, InventoryRow, LineDto, MarketDto, PixelAvatar, TapeEvent, Toast, Member, PostSummary, RelatedTrack, Reply, TrackSummary, User, Wallet } from "./types";
 
 class ApiError extends Error {
   constructor(
@@ -59,6 +59,11 @@ export const api = {
   brief: (handle: string, note: string, post_id?: string) =>
     request<{ ok: true }>("/brief", { method: "POST", body: JSON.stringify({ handle, note, post_id }) }),
   weather: () => request<{ tone: string; summary: string }>("/weather"),
+  bazaar: () => request<{ items: BazaarItem[]; inventory: InventoryRow[]; avatar: PixelAvatar | null }>("/bazaar"),
+  bazaarBuy: (item_id: string, qty: number) =>
+    request<{ ok: true; balance: number }>("/bazaar/buy", { method: "POST", body: JSON.stringify({ item_id, qty }) }),
+  saveAvatar: (avatar: PixelAvatar | null) =>
+    request<{ ok: true; avatar: PixelAvatar | null }>("/avatar", { method: "PUT", body: JSON.stringify({ avatar }) }),
   walletGet: () => request<Wallet>("/wallet"),
   trackLine: (trackId: string) => request<{ line: LineDto | null }>(`/tracks-line/${trackId}`),
   openLine: (slug: string, target_at: number) =>

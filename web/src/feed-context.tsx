@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import type { AgentActivity, Member, PostSummary, TrackSummary, User, Wallet } from "./types";
+import type { AgentActivity, Member, PixelAvatar, PostSummary, TrackSummary, User, Wallet } from "./types";
 import { api } from "./api";
 
 const POLL_MS = 15_000; // v0 feed sync is polling (architecture doc §7); realtime comes later.
@@ -28,6 +28,13 @@ export function useFeed(): FeedState {
   const ctx = useContext(FeedContext);
   if (!ctx) throw new Error("useFeed outside FeedProvider");
   return ctx;
+}
+
+// Pixel avatar lookup by handle — safe anywhere (null outside the provider),
+// so Avatar can stay a dumb component with no props threaded through.
+export function useMemberAvatar(handle: string): PixelAvatar | null {
+  const ctx = useContext(FeedContext);
+  return ctx?.members.find((m) => m.handle === handle)?.avatar ?? null;
 }
 
 export function FeedProvider({ user, children }: { user: User; children: React.ReactNode }) {
