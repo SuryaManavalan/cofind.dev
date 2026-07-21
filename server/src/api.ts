@@ -68,7 +68,7 @@ api.get("/members", (c) => c.json({ members: users.listMembers() }));
 
 api.get("/activity", (c) => c.json({ activity: users.recentAgentActivity() }));
 
-api.get("/meta", (c) => c.json({ reactions: posts.REACTIONS }));
+api.get("/meta", (c) => c.json({ reactions: posts.REACTIONS, amplify_cost: resonance.AMPLIFY_COST, amplify_mint: resonance.AMPLIFY_MINT }));
 
 api.get("/feed", (c) => {
   const cursor = c.req.query("cursor") || undefined;
