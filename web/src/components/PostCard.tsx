@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useFeed } from "../feed-context";
 import Avatar from "./Avatar";
 import { ConvictionAmount, ConvictionCoin } from "./Conviction";
+import HapticOverlay from "./HapticOverlay";
 import ViaChip from "./ViaChip";
 import RenderBody from "./RenderBody";
 
@@ -73,12 +74,13 @@ function ReactionPill({ r, onToggle }: { r: ReactionSummary; onToggle: (e: React
         onPointerUp={clearTimers}
         onPointerCancel={clearTimers}
         className={cn(
-          "flex h-6 select-none items-center gap-1 rounded-full border px-2 text-[11px] tabular-nums transition-colors",
+          "relative flex h-6 select-none items-center gap-1 rounded-full border px-2 text-[11px] tabular-nums transition-colors",
           r.reacted_by_me
             ? "border-brand/40 bg-brand/10 text-foreground"
             : "border-border bg-transparent text-muted-foreground hover:border-ring hover:text-foreground",
         )}
       >
+        <HapticOverlay />
         {RIcon ? <RIcon className={cn("size-3.5", meta!.color)} /> : <span className="text-sm leading-none">{r.reaction}</span>} {r.count}
       </button>
       {peek && r.reactors && (
@@ -140,8 +142,9 @@ export function ReactionBar({
                   key={emoji}
                   onClick={(e) => toggle(emoji, e)}
                   title={meta?.label ?? emoji}
-                  className="rounded-lg p-2 leading-none transition-all hover:bg-accent active:scale-90"
+                  className="relative rounded-lg p-2 leading-none transition-all hover:bg-accent active:scale-90"
                 >
+                  <HapticOverlay />
                   {RIcon ? <RIcon className={cn("size-4.5", meta!.color)} /> : <span className="text-lg">{emoji}</span>}
                 </button>
               );
@@ -375,12 +378,13 @@ export default function PostCard({
               disabled={post.amplified_by_me}
               title={post.amplified_by_me ? "You amplified this" : `Amplify — burn ${amplifyCost} conviction to make this moment glow`}
               className={cn(
-                "group/amp flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] transition-all",
+                "group/amp relative flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] transition-all disabled:pointer-events-none",
                 post.amplified_by_me
                   ? "border-brand/40 bg-brand/15 text-brand"
                   : "border-border text-muted-foreground hover:border-brand/40 hover:text-brand active:scale-90",
               )}
             >
+              {!post.amplified_by_me && <HapticOverlay />}
               <Zap className={cn("size-3", post.amplified_by.length > 0 && "fill-current")} />
               {post.amplified_by.length > 0 && <span className="tabular-nums">{post.amplified_by.length}</span>}
               {!post.amplified_by_me && (
@@ -466,8 +470,9 @@ export default function PostCard({
               size="sm"
               disabled={!canAfford || amplifying}
               onClick={doAmplify}
-              className="bg-brand text-background hover:bg-brand/90"
+              className="relative bg-brand text-background hover:bg-brand/90"
             >
+              <HapticOverlay />
               <ConvictionCoin className="!size-3.5" />
               {amplifying ? "Amplifying…" : `Burn ${amplifyCost} · Amplify`}
             </Button>
