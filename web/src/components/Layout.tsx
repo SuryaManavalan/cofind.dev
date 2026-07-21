@@ -351,6 +351,14 @@ function MobileDrawer({
 //  · swipe left on the drawer — closes it
 // Guards: horizontal intent required; skips [data-no-swipe] zones (the
 // constellation drags nodes) and horizontally-scrollable <pre> blocks.
+// iOS (Safari + standalone PWA) has a NATIVE edge-swipe-back gesture. If our
+// JS also navigates on edge swipes, both fire: two history pops, the second
+// often crossing a document boundary — a full page reload that dumps the user
+// at the top of a fresh feed. So on iOS we yield edge swipes to the OS (its
+// pop is a same-document popstate React Router handles in place) and only
+// handle swipes that start away from the edge, which the OS ignores.
+const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
 function useSwipe(onRight: (edge: boolean) => void, onLeft?: () => void, onDrag?: (dx: number | null) => void) {
   const st = useRef<{ x: number; y: number; lastX: number; edge: boolean; locked: "h" | "v" | null } | null>(null);
   const isMobile = () => window.matchMedia("(max-width: 1023px)").matches;
@@ -363,7 +371,13 @@ function useSwipe(onRight: (edge: boolean) => void, onLeft?: () => void, onDrag?
         return;
       }
       const t = e.touches[0]!;
-      st.current = { x: t.clientX, y: t.clientY, lastX: t.clientX, edge: t.clientX < 32, locked: null };
+      const edge = t.clientX < 32;
+      if (edge && IS_IOS) {
+        // the OS owns this gesture — doing our own back too double-pops
+        st.current = null;
+        return;
+      }
+      st.current = { x: t.clientX, y: t.clientY, lastX: t.clientX, edge, locked: null };
     },
     onTouchMove(e: React.TouchEvent) {
       const s0 = st.current;
