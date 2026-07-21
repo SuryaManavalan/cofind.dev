@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import Avatar, { PixelGrid } from "../components/Avatar";
 import PullToRefresh from "../components/PullToRefresh";
 import { ConvictionAmount, ConvictionCoin } from "../components/Conviction";
+import HapticOverlay from "../components/HapticOverlay";
 
 // The Bazaar (see research/bazaar-roadmap.md): the conviction marketplace.
 // Today it sells pixels; the shop is item-kind agnostic so stranger goods
@@ -229,7 +230,8 @@ function PixelShop({
                 <Button variant="outline" size="sm" disabled={busy} onClick={() => setBuying(null)}>
                   Not now
                 </Button>
-                <Button size="sm" disabled={!canAfford || busy} onClick={doBuy} className="bg-brand text-background hover:bg-brand/90">
+                <Button size="sm" disabled={!canAfford || busy} onClick={doBuy} className="relative bg-brand text-background hover:bg-brand/90">
+                  <HapticOverlay />
                   <ConvictionCoin className="!size-3.5" />
                   {busy ? "Buying…" : `Burn ${cost} · Buy ${qty}`}
                 </Button>
@@ -457,7 +459,8 @@ function AvatarStudio({
               <Avatar handle={me.handle} name={me.name} className="size-16 text-xl" />
             )}
           </div>
-          <Button size="sm" onClick={save} disabled={!dirty || busy} className="sm:w-full">
+          <Button size="sm" onClick={save} disabled={!dirty || busy} className="relative sm:w-full">
+            <HapticOverlay />
             <Check className="!size-3.5" /> {busy ? "Saving…" : "Save"}
           </Button>
         </div>
