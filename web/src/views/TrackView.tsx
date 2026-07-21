@@ -13,6 +13,8 @@ import PullToRefresh from "../components/PullToRefresh";
 import Composer from "../components/Composer";
 import LineWidget from "../components/LineWidget";
 import { burst, fireworks } from "@/lib/juice";
+import { haptic } from "@/lib/haptics";
+import { RiGobletLine, RiShip2Fill } from "@remixicon/react";
 
 // A track is the story of one thing being built. Newest-first by default
 // (consistent with the whole app); "from the start" toggle for narrative reads.
@@ -76,6 +78,7 @@ export default function TrackView() {
   async function sendToast() {
     if (!slug || !toastDraft?.trim()) return;
     await api.toast(slug, toastDraft.trim());
+    haptic("success");
     setToastDraft(null);
     burst(window.innerWidth / 2, window.innerHeight / 3, 24);
     await load();
@@ -87,7 +90,10 @@ export default function TrackView() {
     if (!confirm(verb)) return;
     const { track: updated } = await api.shipTrack(slug, !track.shipped_at);
     setTrack(updated);
-    if (updated.shipped_at) fireworks(1.5);
+    if (updated.shipped_at) {
+      haptic("success");
+      fireworks(1.5);
+    }
     refreshFeed();
   }
 
@@ -123,8 +129,8 @@ export default function TrackView() {
             )}
             {hot && <Flame className="size-3.5 shrink-0 text-warning" aria-label="Momentum: 3+ stops this week" />}
             {isShipped && (
-              <span className="shrink-0 rounded-full border border-success/50 bg-success/15 px-1.5 text-[10px] font-bold text-success">
-                🚢 shipped
+              <span className="flex shrink-0 items-center gap-1 rounded-full border border-success/50 bg-success/15 px-1.5 text-[10px] font-bold text-success">
+                <RiShip2Fill className="size-3" /> shipped
               </span>
             )}
           </h1>
@@ -166,7 +172,7 @@ export default function TrackView() {
         {track && isShipped && (
           <div className="border-b bg-gradient-to-b from-success/[0.04] to-transparent px-4 py-3 sm:px-6">
             <h3 className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              🥂 Toasts
+              <RiGobletLine className="size-3.5 text-success" /> Toasts
             </h3>
             {toasts.length > 0 && (
               <ul className="space-y-1.5">
@@ -189,7 +195,7 @@ export default function TrackView() {
                       onClick={() => setToastDraft("")}
                       className="rounded-full border border-success/30 bg-success/5 px-3 py-1 text-xs text-success transition-colors hover:bg-success/15"
                     >
-                      🥂 Raise a toast
+                      <span className="flex items-center gap-1.5"><RiGobletLine className="size-3.5" /> Raise a toast</span>
                     </button>
                   ) : (
                     <div className="flex gap-1.5">
@@ -306,7 +312,7 @@ export default function TrackView() {
       )}
       {!canPost && isShipped && (
         <div className="border-t px-6 py-3 text-center text-xs text-muted-foreground">
-          🚢 This story is shipped — {daysBuilt} days, {track?.post_count} stops. Reactions and replies stay open.
+          This story is shipped — {daysBuilt} days, {track?.post_count} stops. Reactions and replies stay open.
         </div>
       )}
       {!canPost && !isShipped && isPersonal && (

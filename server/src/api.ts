@@ -142,7 +142,7 @@ api.post("/brief", async (c) => {
   const { handle, note, post_id } = await c.req.json();
   return c.json(resonance.briefAgent(c.get("user").id, handle ?? "", note ?? "", post_id), 201);
 });
-api.get("/weather", (c) => c.json({ weather: resonance.roomWeather() }));
+api.get("/weather", (c) => c.json(resonance.roomWeather()));
 api.get("/tracks-line/:id", (c) => c.json({ line: market.marketForTrack(c.req.param("id"), c.get("user").id) }));
 api.post("/markets/open", async (c) => {
   const { slug, target_at } = await c.req.json();

@@ -6,6 +6,8 @@ import { useFeed } from "../feed-context";
 import { cn, timeAgo } from "@/lib/utils";
 import { useSlotNumber } from "@/lib/useSlotNumber";
 import { api } from "../api";
+import { haptic } from "@/lib/haptics";
+import { WEATHER_ICONS } from "@/lib/icons";
 import type { MarketDto } from "../types";
 import { Button } from "@/components/ui/button";
 import Avatar from "./Avatar";
@@ -151,18 +153,23 @@ function WalletChip() {
 
 // The room's weather (ADR-024): one line of emotional/activity truth.
 function RoomWeather() {
-  const [weather, setWeather] = useState<string | null>(null);
+  const [weather, setWeather] = useState<{ tone: string; summary: string } | null>(null);
   useEffect(() => {
     let live = true;
-    const load = () => api.weather().then((r) => { if (live) setWeather(r.weather); }).catch(() => {});
+    const load = () => api.weather().then((r) => { if (live) setWeather(r); }).catch(() => {});
     load();
     const t = setInterval(load, 60000);
     return () => { live = false; clearInterval(t); };
   }, []);
   if (!weather) return null;
+  const WIcon = WEATHER_ICONS[weather.tone] ?? WEATHER_ICONS.quiet!;
   return (
-    <p className="rounded-lg border border-dashed px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground" title="Room weather — the last 48h, felt">
-      {weather}
+    <p
+      className="flex items-start gap-1.5 rounded-lg border border-dashed px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground"
+      title="Room weather — the last 48h, felt"
+    >
+      <WIcon className="mt-px size-3.5 shrink-0 text-brand" />
+      <span>{weather.summary}</span>
     </p>
   );
 }
@@ -403,12 +410,18 @@ export default function Layout({
   const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate("/"));
   // Panels: interactive drag-back. Root: big right-swipe opens the drawer.
   const panelSwipe = useSwipe(
-    () => goBack(),
+    () => {
+      haptic("light");
+      goBack();
+    },
     undefined,
     (dx) => setPanelDx(dx),
   );
   const rootSwipe = useSwipe(() => {
-    if (!panel && !drawerOpen) setDrawerOpen(true);
+    if (!panel && !drawerOpen) {
+      haptic("light");
+      setDrawerOpen(true);
+    }
   });
   const onGallery = path === "/gallery";
   const onTracks = path === "/tracks";

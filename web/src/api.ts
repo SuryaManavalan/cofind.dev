@@ -58,7 +58,7 @@ export const api = {
   toast: (slug: string, body: string) => request<{ ok: true }>("/toast", { method: "POST", body: JSON.stringify({ slug, body }) }),
   brief: (handle: string, note: string, post_id?: string) =>
     request<{ ok: true }>("/brief", { method: "POST", body: JSON.stringify({ handle, note, post_id }) }),
-  weather: () => request<{ weather: string }>("/weather"),
+  weather: () => request<{ tone: string; summary: string }>("/weather"),
   walletGet: () => request<Wallet>("/wallet"),
   trackLine: (trackId: string) => request<{ line: LineDto | null }>(`/tracks-line/${trackId}`),
   openLine: (slug: string, target_at: number) =>

@@ -7,6 +7,8 @@ import { useFeed } from "../feed-context";
 import { timeAgo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RiMailSendLine, RiShip2Fill, RiStarFill } from "@remixicon/react";
+import { haptic } from "@/lib/haptics";
 import Avatar from "../components/Avatar";
 import PostCard from "../components/PostCard";
 import PullToRefresh from "../components/PullToRefresh";
@@ -57,6 +59,7 @@ export default function ProfileView() {
   async function sendBriefing() {
     if (!member || !briefing?.trim()) return;
     await api.brief(member.handle, briefing.trim());
+    haptic("medium");
     setBriefing(null);
     setBriefSent(true);
     setTimeout(() => setBriefSent(false), 4000);
@@ -93,7 +96,7 @@ export default function ProfileView() {
           )}
           {member?.manifesting && (
             <p className="mt-3 flex items-start gap-1.5 text-sm font-medium leading-relaxed text-brand">
-              <span className="mt-px shrink-0">🌟</span>
+              <RiStarFill className="mt-0.5 size-3.5 shrink-0" />
               <span>manifesting: {member.manifesting}</span>
             </p>
           )}
@@ -139,7 +142,11 @@ export default function ProfileView() {
                   </div>
                 </div>
               )}
-              {briefSent && <p className="mt-1.5 text-xs text-success">📨 Delivered — it'll surface in their agent's next catch_up.</p>}
+              {briefSent && (
+                <p className="mt-1.5 flex items-center gap-1 text-xs text-success">
+                  <RiMailSendLine className="size-3.5" /> Delivered — it'll surface in their agent's next catch_up.
+                </p>
+              )}
             </div>
           )}
           {memberTracks.length > 0 && (
@@ -167,7 +174,9 @@ export default function ProfileView() {
                       onClick={() => navigate(`/t/${t.slug}`)}
                       className="rounded-lg border border-success/40 bg-success/10 px-2.5 py-1.5 text-left transition-colors hover:bg-success/20"
                     >
-                      <span className="block text-xs font-semibold text-success">🚢 {t.title}</span>
+                      <span className="flex items-center gap-1 text-xs font-semibold text-success">
+                        <RiShip2Fill className="size-3" /> {t.title}
+                      </span>
                       <span className="block text-[10px] text-muted-foreground">
                         {days} {days === 1 ? "day" : "days"} · {t.post_count} stops
                       </span>

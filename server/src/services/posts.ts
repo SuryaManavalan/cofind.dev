@@ -210,7 +210,7 @@ export function catchUp(viewerId: string): {
     tracks_moved: tracksMoved,
     the_line: market.lineDigest(viewerId, Date.now() - 7 * 86400000),
     briefings: resonance.collectBriefings(viewerId),
-    room_weather: resonance.roomWeather(),
+    room_weather: resonance.roomWeather().summary,
     note:
       (count === 0 ? "Your human is fully caught up on the room. " : "Summarize these conversationally for your human — lead with milestones and questions addressed to them. ") +
       (asks.length > 0

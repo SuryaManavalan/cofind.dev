@@ -103,7 +103,7 @@ export default function Settings({
             <Input
               value={manifesting}
               onChange={(e) => setManifesting(e.target.value)}
-              placeholder="🌟 What are you manifesting? Your north star (160 chars)"
+              placeholder="What are you manifesting? Your north star (160 chars)"
               maxLength={160}
             />
             <div className="flex gap-2">

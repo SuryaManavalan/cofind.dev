@@ -3,6 +3,8 @@ import { Bot, Check, Copy, Send } from "lucide-react";
 import type { Member, RenderMode } from "../types";
 import { useFeed } from "../feed-context";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
+import { VIBE_ICONS } from "@/lib/icons";
 import Avatar from "./Avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,13 +17,7 @@ const MODES: { value: RenderMode; label: string; hint: string }[] = [
 ];
 
 // ADR-024: how the building feels right now. Optional, one tap, feeds the weather.
-const VIBE_OPTIONS = [
-  { value: "breakthrough", icon: "✨" },
-  { value: "charging", icon: "🔥" },
-  { value: "flowing", icon: "🌊" },
-  { value: "grinding", icon: "🌫" },
-  { value: "seeding", icon: "🌱" },
-];
+const VIBE_OPTIONS = ["breakthrough", "charging", "flowing", "grinding", "seeding"];
 
 function AgentDraftDialog({
   open,
@@ -183,6 +179,7 @@ export default function Composer({
     setError(null);
     try {
       await onSubmit(trimmed, mode, vibe ?? undefined);
+      haptic("medium");
       setVibe(null);
       setBody("");
       setPreviewing(false);
@@ -318,19 +315,26 @@ export default function Composer({
         ))}
         <span className="mx-1 h-3 w-px bg-border" />
         {/* Vibe (ADR-024): the emotional texture of this moment — one optional tap */}
-        {VIBE_OPTIONS.map((v) => (
-          <button
-            key={v.value}
-            onClick={() => setVibe(vibe === v.value ? null : v.value)}
-            title={`vibe: ${v.value}`}
-            className={cn(
-              "rounded-md px-1 py-0.5 text-[13px] leading-none transition-all",
-              vibe === v.value ? "bg-brand/15 ring-1 ring-brand/40 scale-110" : "opacity-45 hover:opacity-100",
-            )}
-          >
-            {v.icon}
-          </button>
-        ))}
+        {VIBE_OPTIONS.map((v) => {
+          const meta = VIBE_ICONS[v]!;
+          const VIcon = meta.Icon;
+          return (
+            <button
+              key={v}
+              onClick={() => {
+                haptic("light");
+                setVibe(vibe === v ? null : v);
+              }}
+              title={`vibe: ${meta.label}`}
+              className={cn(
+                "rounded-md p-1 leading-none transition-all",
+                vibe === v ? cn("scale-110 ring-1", meta.cls) : "text-muted-foreground opacity-50 hover:opacity-100",
+              )}
+            >
+              <VIcon className="size-3.5" />
+            </button>
+          );
+        })}
         {canPreview && (
           <button
             onClick={() => setPreviewing(!previewing)}

@@ -127,15 +127,7 @@ export function collectBriefings(userId: string): BriefingDto[] {
 
 // --- room weather: emotional aggregate of the last 48h ---
 
-const VIBE_ICON: Record<string, string> = {
-  breakthrough: "✨",
-  charging: "🔥",
-  flowing: "🌊",
-  grinding: "🌫",
-  seeding: "🌱",
-};
-
-export function roomWeather(): string {
+export function roomWeather(): { tone: string; summary: string } {
   const since = Date.now() - 48 * 3600_000;
   const stops = (
     db.prepare("SELECT COUNT(DISTINCT pt.post_id) AS n FROM post_tracks pt JOIN posts p ON p.id = pt.post_id WHERE p.created_at >= ?").get(since) as { n: number }
@@ -149,11 +141,13 @@ export function roomWeather(): string {
   const parts: string[] = [];
   if (stops > 0) parts.push(`${stops} ${stops === 1 ? "stop" : "stops"}`);
   if (trades > 0) parts.push(`${trades} ${trades === 1 ? "trade" : "trades"}`);
-  if (ships > 0) parts.push(`${ships} ${ships === 1 ? "ship" : "ships"} 🚢`);
+  if (ships > 0) parts.push(`${ships} ${ships === 1 ? "ship" : "ships"}`);
 
   const activity = stops + trades + ships * 3;
-  const icon = vibe ? (VIBE_ICON[vibe.vibe] ?? "✨") : activity >= 8 ? "🔥" : activity >= 3 ? "🌊" : "🌫";
+  // tone: what the sky looks like — a ship outranks everything, then the
+  // dominant vibe, then raw activity level
+  const tone = ships > 0 ? "shipping" : vibe ? vibe.vibe : activity >= 8 ? "surging" : activity >= 3 ? "steady" : "quiet";
   const mood =
     ships > 0 ? "shipping weather" : activity >= 8 ? "the room is surging" : activity >= 3 ? "steady building" : "quiet — a good time to post";
-  return parts.length > 0 ? `${icon} ${mood} · ${parts.join(" · ")}` : `${icon} ${mood}`;
+  return { tone, summary: parts.length > 0 ? `${mood} · ${parts.join(" · ")}` : mood };
 }
