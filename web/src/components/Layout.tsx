@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Activity, Bot, Flame, GitBranch, Home, LayoutGrid, Menu, Settings as SettingsIcon, Sparkles, TrendingUp, X } from "lucide-react";
+import { Activity, Bot, Flame, GitBranch, Home, LayoutGrid, Menu, Settings as SettingsIcon, Sparkles, Store, TrendingUp, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { User } from "../types";
 import { useFeed } from "../feed-context";
@@ -254,7 +254,7 @@ function FeedHeader() {
   const online = members.filter((m) => isOnline(m.last_active_at));
   const lastAgent = activity[0];
   const path = useLocation().pathname;
-  const title = path === "/gallery" ? "Gallery" : path === "/tracks" ? "Tracks" : path === "/graph" ? "Constellation" : path === "/floor" ? "The Floor" : "Feed";
+  const title = path === "/gallery" ? "Gallery" : path === "/tracks" ? "Tracks" : path === "/graph" ? "Constellation" : path === "/floor" ? "The Floor" : path === "/bazaar" ? "The Bazaar" : "Feed";
   return (
     <header className="hidden shrink-0 items-center justify-between border-b px-6 py-2.5 md:flex">
       <div className="flex items-center gap-2">
@@ -301,6 +301,7 @@ function MobileDrawer({
     { label: "Gallery", icon: <LayoutGrid />, to: "/gallery" },
     { label: "Constellation", icon: <Sparkles />, to: "/graph" },
     { label: "The Floor", icon: <TrendingUp />, to: "/floor" },
+    { label: "The Bazaar", icon: <Store />, to: "/bazaar" },
   ];
   return (
     <div className="fixed inset-0 z-40 md:hidden" onClick={onClose}>
@@ -450,7 +451,8 @@ export default function Layout({
   const onTracks = path === "/tracks";
   const onGraph = path === "/graph";
   const onFloor = path === "/floor";
-  const onFeed = !onGallery && !onTracks && !onGraph && !onFloor;
+  const onBazaar = path === "/bazaar";
+  const onFeed = !onGallery && !onTracks && !onGraph && !onFloor && !onBazaar;
 
   return (
     <div className="flex h-dvh w-full justify-center" {...(!panel && !drawerOpen ? rootSwipe : {})}>
@@ -512,6 +514,14 @@ export default function Layout({
           >
             <TrendingUp /> The Floor
             <WalletChip />
+          </Button>
+          <Button
+            variant={onBazaar ? "secondary" : "ghost"}
+            className={cn("w-full justify-start", !onBazaar && "text-muted-foreground")}
+            size="sm"
+            onClick={() => navigate("/bazaar")}
+          >
+            <Store /> The Bazaar
           </Button>
           <Button variant="ghost" className="w-full justify-start text-muted-foreground" size="sm" onClick={() => setShowSettings(true)}>
             <Bot /> Connect your agent

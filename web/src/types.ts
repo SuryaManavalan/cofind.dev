@@ -99,6 +99,28 @@ export interface AccessToken {
 
 export interface Member extends User {
   last_active_at: number | null;
+  avatar?: PixelAvatar | null;
+}
+
+// --- The Bazaar ---
+
+export interface PixelAvatar {
+  size: number;
+  cells: (string | null)[];
+}
+
+export interface BazaarItem {
+  id: string;
+  kind: string;
+  name: string;
+  price: number;
+  spec: Record<string, string>;
+}
+
+export interface InventoryRow {
+  kind: string;
+  spec: string;
+  qty: number;
 }
 
 export interface AgentActivity {

@@ -263,6 +263,26 @@ CREATE TABLE IF NOT EXISTS briefings (
   read_at    INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_briefings_to ON briefings (to_user, read_at, created_at DESC);
+
+-- The Bazaar: conviction marketplace. Inventory is item-kind agnostic —
+-- 'pixel' today; inference tokens, agent hours, member listings later
+-- (research/bazaar-roadmap.md).
+CREATE TABLE IF NOT EXISTS inventory (
+  user_id     TEXT NOT NULL REFERENCES users(id),
+  kind        TEXT NOT NULL,
+  spec        TEXT NOT NULL,
+  qty         INTEGER NOT NULL DEFAULT 0,
+  acquired_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, kind, spec)
+);
+
+-- Pixel avatars built in the studio from owned pixels. Letter mode = no row.
+CREATE TABLE IF NOT EXISTS avatars (
+  user_id    TEXT PRIMARY KEY REFERENCES users(id),
+  size       INTEGER NOT NULL CHECK (size IN (4, 8, 16)),
+  cells      TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 `);
 addColumn("users", "manifesting TEXT");
 addColumn("posts", "vibe TEXT");
