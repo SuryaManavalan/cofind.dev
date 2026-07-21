@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
 
 const THRESHOLD = 64;
 const MAX_PULL = 96;
@@ -38,8 +39,10 @@ export default function PullToRefresh({
       setPull(0);
       return;
     }
-    // dampened pull
-    setPull(Math.min(dy * 0.45, MAX_PULL));
+    // dampened pull — haptic tick the moment the release-to-refresh threshold arms
+    const next = Math.min(dy * 0.45, MAX_PULL);
+    if (pull < THRESHOLD && next >= THRESHOLD) haptic("light");
+    setPull(next);
   }
 
   async function onTouchEnd() {
@@ -47,6 +50,7 @@ export default function PullToRefresh({
     const release = pull;
     startY.current = null;
     if (release >= THRESHOLD) {
+      haptic("medium");
       setBusy(true);
       setPull(48);
       try {

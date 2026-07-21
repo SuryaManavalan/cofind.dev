@@ -5,6 +5,8 @@ import { api } from "../api";
 import { useFeed } from "../feed-context";
 import { cn, timeAgo } from "@/lib/utils";
 import { burst, fireworks } from "@/lib/juice";
+import { haptic } from "@/lib/haptics";
+import { RiSparkling2Fill } from "@remixicon/react";
 import { useSlotNumber } from "@/lib/useSlotNumber";
 import { Button } from "@/components/ui/button";
 import Avatar from "./Avatar";
@@ -69,6 +71,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
     setBusy(true);
     try {
       await api.marketTrade(line.id, side, "buy", spend);
+      haptic("medium");
       burst(e.clientX, e.clientY, 20);
       setFlash(true);
       setTimeout(() => setFlash(false), 700);
@@ -84,6 +87,7 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
     setBusy(true);
     try {
       await api.marketTrade(line.id, sellSide, "sell", shares);
+      haptic("light");
       burst(e.clientX, e.clientY, 10);
       await load();
       onChanged();
@@ -185,7 +189,9 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
 
       {settled ? (
         line.my.payout ? (
-          <p className="mt-2 text-sm font-semibold text-success">🎆 Your position paid out +{line.my.payout} conviction</p>
+          <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-success">
+            <RiSparkling2Fill className="size-4" /> Your position paid out +{line.my.payout} conviction
+          </p>
         ) : null
       ) : line.insider ? (
         <p className="mt-2 rounded-lg border border-dashed px-3 py-2 text-[11px] text-muted-foreground">
@@ -203,7 +209,10 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
             ).map((b) => (
               <button
                 key={b.sd}
-                onClick={() => setSide(b.sd)}
+                onClick={() => {
+                  haptic("light");
+                  setSide(b.sd);
+                }}
                 className={cn(
                   "flex items-center justify-between rounded-xl border-2 px-3.5 py-2 transition-all active:scale-[0.98]",
                   side === b.sd ? b.on : cn("border-border text-muted-foreground", b.ring),

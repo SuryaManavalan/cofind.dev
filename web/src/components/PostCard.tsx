@@ -1,9 +1,12 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle, Plus } from "lucide-react";
+import { MessageCircle, Plus, Zap } from "lucide-react";
 import type { PostSummary, ReactionSummary, Reply, TrackRef } from "../types";
 import { api } from "../api";
 import { burst } from "@/lib/juice";
+import { haptic } from "@/lib/haptics";
+import { REACTION_ICONS, VIBE_ICONS } from "@/lib/icons";
+import { RiFlashlightFill, RiShip2Fill } from "@remixicon/react";
 import { cn, timeAgo } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import Avatar from "./Avatar";
@@ -25,6 +28,7 @@ export function ReactionBar({
 
   async function toggle(emoji: string, e?: React.MouseEvent) {
     setPicking(false);
+    haptic("light");
     const adding = !reactions.find((r) => r.reaction === emoji)?.reacted_by_me;
     await api.react(targetId, emoji);
     if (adding && e) burst(e.clientX, e.clientY, 10);
@@ -44,7 +48,15 @@ export function ReactionBar({
               : "border-border bg-transparent text-muted-foreground hover:border-ring hover:text-foreground",
           )}
         >
-          <span className="text-sm leading-none">{r.reaction}</span> {r.count}
+          {REACTION_ICONS[r.reaction] ? (
+            (() => {
+              const RIcon = REACTION_ICONS[r.reaction]!.Icon;
+              return <RIcon className="size-3.5" />;
+            })()
+          ) : (
+            <span className="text-sm leading-none">{r.reaction}</span>
+          )}{" "}
+          {r.count}
         </button>
       ))}
       <div className="relative">
@@ -57,11 +69,20 @@ export function ReactionBar({
         </button>
         {picking && (
           <div className="absolute bottom-9 left-0 z-10 flex gap-0.5 rounded-xl border bg-popover p-1 shadow-md animate-in fade-in-0 zoom-in-95">
-            {allReactions.map((emoji) => (
-              <button key={emoji} onClick={(e) => toggle(emoji, e)} className="rounded-lg p-1.5 text-lg leading-none hover:bg-accent">
-                {emoji}
-              </button>
-            ))}
+            {allReactions.map((emoji) => {
+              const meta = REACTION_ICONS[emoji];
+              const RIcon = meta?.Icon;
+              return (
+                <button
+                  key={emoji}
+                  onClick={(e) => toggle(emoji, e)}
+                  title={meta?.label ?? emoji}
+                  className="rounded-lg p-2 leading-none text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  {RIcon ? <RIcon className="size-4.5" /> : <span className="text-lg">{emoji}</span>}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -155,7 +176,8 @@ export function TrackChip({ track }: { track: TrackRef }) {
           <span className="mb-1.5 flex items-baseline gap-2 text-xs">
             <span className="font-semibold text-success">#{track.slug}</span>
             <span className="text-muted-foreground">
-              {peek.count} stops{peek.shipped ? " · 🚢 shipped" : ""}
+              {peek.count} stops{peek.shipped ? " · shipped" : ""}
+              {peek.shipped && <RiShip2Fill className="ml-0.5 inline size-3 text-success" />}
             </span>
           </span>
           {peek.stops.map((st) => (
@@ -190,6 +212,19 @@ export default function PostCard({
     setPreview(replies.slice(0, REPLY_PREVIEW_COUNT));
   }
 
+  async function doAmplify(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (post.amplified_by_me) return;
+    try {
+      await api.amplify(post.id);
+      haptic("medium");
+      burst(e.clientX, e.clientY, 22);
+      onChange();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Couldn't amplify");
+    }
+  }
+
   async function togglePreview(e: React.MouseEvent) {
     e.stopPropagation();
     if (preview) setPreview(null);
@@ -199,7 +234,10 @@ export default function PostCard({
   return (
     <article
       onClick={open}
-      className="group cursor-pointer border-b px-4 py-4 transition-colors hover:bg-accent/40 sm:px-6"
+      className={cn(
+        "group cursor-pointer border-b px-4 py-4 transition-colors hover:bg-accent/40 sm:px-6",
+        post.amplified_by.length > 0 && "bg-gradient-to-r from-brand/[0.05] via-transparent to-transparent shadow-[inset_2px_0_0_0_var(--brand)]",
+      )}
     >
       <div className="flex gap-3">
         <Avatar handle={post.author.handle} name={post.author.display_name} />
@@ -220,6 +258,18 @@ export default function PostCard({
                 ↻ {timeAgo(post.edited_at)}
               </span>
             )}
+            {post.vibe && VIBE_ICONS[post.vibe] && (
+              <span
+                className={cn("inline-flex h-5 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium", VIBE_ICONS[post.vibe]!.cls)}
+                title={`vibe: ${VIBE_ICONS[post.vibe]!.label}`}
+              >
+                {(() => {
+                  const VIcon = VIBE_ICONS[post.vibe!]!.Icon;
+                  return <VIcon className="size-3" />;
+                })()}
+                {VIBE_ICONS[post.vibe]!.label}
+              </span>
+            )}
             {post.render_mode !== "text" && (
               <Badge variant={post.render_mode === "html" ? "brand" : "outline"} className="ml-auto">
                 {post.render_mode === "markdown" ? "md" : post.render_mode}
@@ -236,6 +286,25 @@ export default function PostCard({
             {post.tracks.map((t) => (
               <TrackChip key={t.slug} track={t} />
             ))}
+            <button
+              onClick={doAmplify}
+              disabled={post.amplified_by_me}
+              title={post.amplified_by_me ? "You amplified this" : "Amplify — burn 5 conviction to make this moment glow"}
+              className={cn(
+                "flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] transition-all",
+                post.amplified_by_me
+                  ? "border-brand/40 bg-brand/15 text-brand"
+                  : "border-border text-muted-foreground hover:border-brand/40 hover:text-brand active:scale-90",
+              )}
+            >
+              <Zap className={cn("size-3", post.amplified_by.length > 0 && "fill-current")} />
+              {post.amplified_by.length > 0 && <span className="tabular-nums">{post.amplified_by.length}</span>}
+            </button>
+            {post.amplified_by.length > 0 && (
+              <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground" title="Amplified — they spent conviction on this">
+                <RiFlashlightFill className="size-2.5 text-brand" /> {post.amplified_by.map((a) => `@${a.handle}`).join(" ")}
+              </span>
+            )}
             <button
               onClick={post.reply_count > 0 ? togglePreview : open}
               className="flex h-6 items-center gap-1.5 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

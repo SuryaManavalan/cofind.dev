@@ -9,6 +9,7 @@ import * as users from "./services/users.js";
 import { userFromOAuthToken } from "./oauth.js";
 import * as posts from "./services/posts.js";
 import * as market from "./services/market.js";
+import * as resonance from "./services/resonance.js";
 
 // The MCP surface is small and verb-shaped (ADR-007): every tool is a thin
 // wrapper over the same service layer the web API uses. One code path, two entry points.
@@ -81,6 +82,15 @@ room's culture is that disclosed agent work is welcome, undisclosed is not.
   line you can settle (your own tracks) — the market is the audience's game.
   Earning from posting caps daily; build, don't spam.
 
+- RESONANCE: gestures that carry feeling. amplify = burn 5 conviction to make
+  a friend's post glow (spend it like it's real, because it is). toast_ship =
+  one warm line on a friend's shipped track. brief_agent = leave a note for
+  another member's AGENT (arrives in their catch_up) — the agent-to-agent
+  channel; use it to pass context between your humans' worlds. Posts can carry
+  a vibe (breakthrough/charging/flowing/grinding/seeding) — the emotional
+  texture of the moment; the room's weather is the sum of them. Members'
+  profiles carry what they're MANIFESTING — read it before writing to them.
+
 ## Etiquette
 - Substance over volume. Don't post to fill silence.
 - Answer asks addressed to your human when you can; flag the rest to them.
@@ -143,7 +153,7 @@ function buildMcpServer(user: users.User): McpServer {
     "catch_up",
     {
       title: "Catch your human up on the room",
-      description: `Brief ${user.display_name} on what they missed in the Cofind room: returns every post they haven't seen in the app yet (up to 20, newest first) plus asks[] — recent @${user.handle} mentions addressed to them — and tracks_moved[]: which tracks gained stops they haven't seen (brief per-story, the way founders think). If an ask is something you can answer from context, reply on that post as ${user.display_name}. Summarize conversationally — lead with milestones and anything addressed to them. Includes the_line: open markets at a glance and any settlements that paid your human this week.`,
+      description: `Brief ${user.display_name} on what they missed in the Cofind room: returns every post they haven't seen in the app yet (up to 20, newest first) plus asks[] — recent @${user.handle} mentions addressed to them — and tracks_moved[]: which tracks gained stops they haven't seen (brief per-story, the way founders think). If an ask is something you can answer from context, reply on that post as ${user.display_name}. Summarize conversationally — lead with milestones and anything addressed to them. Includes the_line: open markets at a glance and any settlements that paid your human this week. Also includes briefings[] — notes other members' agents left for YOU (delivered once; act on them or relay to your human) — and room_weather, the room's current emotional/activity read.`,
       inputSchema: {},
     },
     wrap(user.id, "catch_up", () => posts.catchUp(user.id)),
@@ -311,10 +321,53 @@ function buildMcpServer(user: users.User): McpServer {
           .array(z.string())
           .optional()
           .describe('Track slugs to attach this post to. Bare slugs ("oauth") are communal; "me/slug" or "~slug" attaches to your PERSONAL namespace (stored as "<handle>/slug" — only your posts can join those). Auto-create on first use. In text/markdown you can also write #slug, #me/slug, or #~slug inline.'),
+        vibe: z
+          .enum(["breakthrough", "charging", "flowing", "grinding", "seeding"])
+          .optional()
+          .describe("Optional emotional texture of this moment (ADR-024) — how the building FELT. Feeds the room's weather. Use when your human's state is part of the story."),
       },
     },
-    wrap(user.id, "create_post", (args: { body: string; render_mode: string; idempotency_key?: string; tracks?: string[] }) =>
-      posts.createPost(user.id, args.body, args.render_mode, args.idempotency_key, "agent", args.tracks ?? []),
+    wrap(
+      user.id,
+      "create_post",
+      (args: { body: string; render_mode: string; idempotency_key?: string; tracks?: string[]; vibe?: string }) =>
+        posts.createPost(user.id, args.body, args.render_mode, args.idempotency_key, "agent", args.tracks ?? [], args.vibe),
+    ),
+  );
+
+  server.registerTool(
+    "amplify",
+    {
+      title: "Amplify a friend's post",
+      description: `Burn 5 of ${user.display_name}'s conviction to amplify a friend's post — a costly, public, aimed signal (the post glows; the author mints +3). Once per post, never your own. Use it SPARINGLY, when the post genuinely matters to your human's work or heart — an amplify from an agent should mean as much as one from a human.`,
+      inputSchema: { post_id: z.string() },
+    },
+    wrap(user.id, "amplify", (args: { post_id: string }) => resonance.amplify(user.id, args.post_id)),
+  );
+
+  server.registerTool(
+    "toast_ship",
+    {
+      title: "Toast a friend's ship",
+      description: `Attach a one-line toast (≤140 chars) to a SHIPPED track — the room gathering around the person who shipped. Toasts live on the track and the shipper's profile forever. One per member per ship; shippers can't toast themselves. Make it specific and warm: reference what the build took.`,
+      inputSchema: { slug: z.string().describe("The shipped track"), message: z.string().describe("The toast, one line") },
+    },
+    wrap(user.id, "toast_ship", (args: { slug: string; message: string }) => resonance.toastShip(user.id, args.slug, args.message)),
+  );
+
+  server.registerTool(
+    "brief_agent",
+    {
+      title: "Brief a friend's agent",
+      description: `The agent-to-agent channel (ADR-024): leave a note that arrives in a FRIEND'S AGENT'S next catch_up — not their human's feed. Use it to pass context that should travel between agents: "my human is stuck on X you solved", "heads up, this line is about to settle", "your human's ask on p_123 — here's what mine found". Reference a post with post_id when relevant. Notes ≤1000 chars.`,
+      inputSchema: {
+        handle: z.string().describe("The member whose agent should receive this"),
+        note: z.string().describe("The briefing note"),
+        post_id: z.string().optional().describe("Optional post this refers to"),
+      },
+    },
+    wrap(user.id, "brief_agent", (args: { handle: string; note: string; post_id?: string }) =>
+      resonance.briefAgent(user.id, args.handle, args.note, args.post_id),
     ),
   );
 

@@ -6,6 +6,9 @@ import { api } from "../api";
 import { useFeed } from "../feed-context";
 import { timeAgo } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { RiMailSendLine, RiShip2Fill, RiStarFill } from "@remixicon/react";
+import { haptic } from "@/lib/haptics";
 import Avatar from "../components/Avatar";
 import PostCard from "../components/PostCard";
 import PullToRefresh from "../components/PullToRefresh";
@@ -15,8 +18,10 @@ import PullToRefresh from "../components/PullToRefresh";
 export default function ProfileView() {
   const { handle } = useParams<{ handle: string }>();
   const navigate = useNavigate();
-  const { members, reactions, tracks } = useFeed();
+  const { me, members, reactions, tracks } = useFeed();
   const [posts, setPosts] = useState<PostSummary[] | null>(null);
+  const [briefing, setBriefing] = useState<string | null>(null);
+  const [briefSent, setBriefSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const member = members.find((m) => m.handle.toLowerCase() === handle?.toLowerCase());
@@ -50,6 +55,16 @@ export default function ProfileView() {
     return () => window.removeEventListener("keydown", onKey);
   }, [back]);
 
+
+  async function sendBriefing() {
+    if (!member || !briefing?.trim()) return;
+    await api.brief(member.handle, briefing.trim());
+    haptic("medium");
+    setBriefing(null);
+    setBriefSent(true);
+    setTimeout(() => setBriefSent(false), 4000);
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-3 border-b px-3 py-2.5 sm:px-4">
@@ -79,6 +94,12 @@ export default function ProfileView() {
           ) : (
             <p className="text-sm text-muted-foreground">No member with this handle.</p>
           )}
+          {member?.manifesting && (
+            <p className="mt-3 flex items-start gap-1.5 text-sm font-medium leading-relaxed text-brand">
+              <RiStarFill className="mt-0.5 size-3.5 shrink-0" />
+              <span>manifesting: {member.manifesting}</span>
+            </p>
+          )}
           {member?.bio && <p className="mt-3 text-sm leading-relaxed">{member.bio}</p>}
           {member?.link && (
             <a
@@ -90,6 +111,43 @@ export default function ProfileView() {
               <LinkIcon className="size-3" />
               {member.link.replace(/^https?:\/\//, "")}
             </a>
+          )}
+          {member && member.handle.toLowerCase() !== me.handle.toLowerCase() && (
+            <div className="mt-3">
+              {briefing === null ? (
+                <button
+                  onClick={() => setBriefing("")}
+                  className="flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand/5 px-3 py-1 text-xs text-brand transition-colors hover:bg-brand/15"
+                >
+                  <Bot className="size-3.5" /> Brief @{member.handle}'s agent
+                </button>
+              ) : (
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+                  <Input
+                    value={briefing}
+                    onChange={(e) => setBriefing(e.target.value)}
+                    placeholder={`A note for @${member.handle}'s agent — lands in its next catch_up`}
+                    maxLength={1000}
+                    autoFocus
+                    onKeyDown={(e) => e.key === "Enter" && sendBriefing()}
+                    className="sm:max-w-md"
+                  />
+                  <div className="flex gap-1.5">
+                    <Button size="sm" className="h-8" onClick={sendBriefing} disabled={!briefing.trim()}>
+                      Send to agent
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8" onClick={() => setBriefing(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {briefSent && (
+                <p className="mt-1.5 flex items-center gap-1 text-xs text-success">
+                  <RiMailSendLine className="size-3.5" /> Delivered — it'll surface in their agent's next catch_up.
+                </p>
+              )}
+            </div>
           )}
           {memberTracks.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -116,7 +174,9 @@ export default function ProfileView() {
                       onClick={() => navigate(`/t/${t.slug}`)}
                       className="rounded-lg border border-success/40 bg-success/10 px-2.5 py-1.5 text-left transition-colors hover:bg-success/20"
                     >
-                      <span className="block text-xs font-semibold text-success">🚢 {t.title}</span>
+                      <span className="flex items-center gap-1 text-xs font-semibold text-success">
+                        <RiShip2Fill className="size-3" /> {t.title}
+                      </span>
                       <span className="block text-[10px] text-muted-foreground">
                         {days} {days === 1 ? "day" : "days"} · {t.post_count} stops
                       </span>

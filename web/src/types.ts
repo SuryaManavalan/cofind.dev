@@ -8,6 +8,7 @@ export interface User {
   created_at: number;
   bio?: string | null;
   link?: string | null;
+  manifesting?: string | null;
 }
 
 export interface Author {
@@ -34,6 +35,16 @@ export interface PostSummary {
   reactions: ReactionSummary[];
   seen_by_me: boolean;
   tracks: TrackRef[];
+  vibe: string | null;
+  amplified_by: { handle: string; display_name: string }[];
+  amplified_by_me: boolean;
+}
+
+export interface Toast {
+  handle: string;
+  display_name: string;
+  body: string;
+  created_at: number;
 }
 
 export interface TrackRef {

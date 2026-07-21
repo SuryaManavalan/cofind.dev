@@ -5,6 +5,7 @@ import type { FloorMarket, TapeEvent, Wallet } from "../types";
 import { api } from "../api";
 import { cn, timeAgo } from "@/lib/utils";
 import { burst } from "@/lib/juice";
+import { haptic } from "@/lib/haptics";
 import { useSlotNumber } from "@/lib/useSlotNumber";
 import PullToRefresh from "../components/PullToRefresh";
 
@@ -191,6 +192,7 @@ function MarketCard({ m, onTraded }: { m: FloorMarket; onTraded: () => void }) {
     setBusy(true);
     try {
       await api.marketTrade(m.id, side, "buy", 25);
+      haptic("medium");
       burst(e.clientX, e.clientY, 18);
       onTraded();
     } finally {

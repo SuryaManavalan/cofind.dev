@@ -3,6 +3,8 @@ import { Bot, Check, Copy, Send } from "lucide-react";
 import type { Member, RenderMode } from "../types";
 import { useFeed } from "../feed-context";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
+import { VIBE_ICONS } from "@/lib/icons";
 import Avatar from "./Avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,6 +15,9 @@ const MODES: { value: RenderMode; label: string; hint: string }[] = [
   { value: "markdown", label: "md", hint: "Rendered markdown" },
   { value: "html", label: "html", hint: "Sandboxed HTML artifact" },
 ];
+
+// ADR-024: how the building feels right now. Optional, one tap, feeds the weather.
+const VIBE_OPTIONS = ["breakthrough", "charging", "flowing", "grinding", "seeding"];
 
 function AgentDraftDialog({
   open,
@@ -69,12 +74,13 @@ export default function Composer({
 }: {
   placeholder: string;
   defaultMode?: RenderMode;
-  onSubmit: (body: string, mode: RenderMode) => Promise<void>;
+  onSubmit: (body: string, mode: RenderMode, vibe?: string) => Promise<void>;
   postId?: string;
   listenForPalette?: boolean;
 }) {
   const [body, setBody] = useState("");
   const [mode, setMode] = useState<RenderMode>(defaultMode);
+  const [vibe, setVibe] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -172,7 +178,9 @@ export default function Composer({
     setSending(true);
     setError(null);
     try {
-      await onSubmit(trimmed, mode);
+      await onSubmit(trimmed, mode, vibe ?? undefined);
+      haptic("medium");
+      setVibe(null);
       setBody("");
       setPreviewing(false);
       if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -305,6 +313,28 @@ export default function Composer({
             {m.label}
           </button>
         ))}
+        <span className="mx-1 h-3 w-px bg-border" />
+        {/* Vibe (ADR-024): the emotional texture of this moment — one optional tap */}
+        {VIBE_OPTIONS.map((v) => {
+          const meta = VIBE_ICONS[v]!;
+          const VIcon = meta.Icon;
+          return (
+            <button
+              key={v}
+              onClick={() => {
+                haptic("light");
+                setVibe(vibe === v ? null : v);
+              }}
+              title={`vibe: ${meta.label}`}
+              className={cn(
+                "rounded-md p-1 leading-none transition-all",
+                vibe === v ? cn("scale-110 ring-1", meta.cls) : "text-muted-foreground opacity-50 hover:opacity-100",
+              )}
+            >
+              <VIcon className="size-3.5" />
+            </button>
+          );
+        })}
         {canPreview && (
           <button
             onClick={() => setPreviewing(!previewing)}

@@ -235,3 +235,34 @@ CREATE TABLE IF NOT EXISTS mentions (
 );
 CREATE INDEX IF NOT EXISTS idx_mentions_user ON mentions (mentioned_user_id, created_at DESC);
 `);
+
+// Resonance layer (ADR-024): aimed, costly, feeling-carrying gestures.
+db.exec(`
+CREATE TABLE IF NOT EXISTS amplifies (
+  post_id    TEXT NOT NULL REFERENCES posts(id),
+  user_id    TEXT NOT NULL REFERENCES users(id),
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (post_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS toasts (
+  track_id   TEXT NOT NULL REFERENCES tracks(id),
+  user_id    TEXT NOT NULL REFERENCES users(id),
+  body       TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (track_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS briefings (
+  id         TEXT PRIMARY KEY,
+  from_user  TEXT NOT NULL REFERENCES users(id),
+  to_user    TEXT NOT NULL REFERENCES users(id),
+  note       TEXT NOT NULL,
+  post_id    TEXT REFERENCES posts(id),
+  created_at INTEGER NOT NULL,
+  read_at    INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_briefings_to ON briefings (to_user, read_at, created_at DESC);
+`);
+addColumn("users", "manifesting TEXT");
+addColumn("posts", "vibe TEXT");

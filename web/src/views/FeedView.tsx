@@ -9,10 +9,16 @@ import Composer from "../components/Composer";
 import PullToRefresh from "../components/PullToRefresh";
 import { Button } from "@/components/ui/button";
 
-// Survives across the thread overlay: on iOS a `position: fixed` overlay
-// (the thread) drops the scroll offset of the feed underneath it, so we
-// remember it here and put it back when the feed is the visible route again.
-let feedScrollMemory = 0;
+// Survives across the thread overlay AND full reloads: on iOS a `position:
+// fixed` overlay (the thread) drops the scroll offset of the feed underneath
+// it — and a native-gesture mishap can reload the whole document — so the
+// memory lives in sessionStorage, not just module state.
+const SCROLL_KEY = "cofind-feed-scroll";
+let feedScrollMemory = Number(sessionStorage.getItem(SCROLL_KEY) ?? 0) || 0;
+function rememberScroll(v: number) {
+  feedScrollMemory = v;
+  sessionStorage.setItem(SCROLL_KEY, String(v));
+}
 
 export default function FeedView() {
   const { posts, reactions, refresh, loadMore, nextCursor, loadingMore, initialUnseen } = useFeed();
@@ -35,7 +41,7 @@ export default function FeedView() {
     const el = scrollRef.current;
     if (!el) return;
     const onScroll = () => {
-      if (active.current && saving.current) feedScrollMemory = el.scrollTop;
+      if (active.current && saving.current) rememberScroll(el.scrollTop);
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
@@ -46,9 +52,11 @@ export default function FeedView() {
   // that was under a fixed overlay, and does so on a *late* frame — so we
   // re-apply across a short window (with saving frozen so the drop can't poison
   // the memory), and hand control back the moment the user touches to scroll.
+  const hasPosts = posts.length > 0;
   useEffect(() => {
     if (location.pathname !== "/") return;
     if (feedScrollMemory <= 0) return;
+    if (!hasPosts) return; // after a reload the feed is empty at first — wait, or scrollTop clamps to 0
     const el = scrollRef.current;
     if (!el) return;
 
@@ -65,9 +73,11 @@ export default function FeedView() {
     // A genuine touch means the user has taken over — stop and resume tracking.
     el.addEventListener("touchstart", resume, { passive: true });
 
-    const timers = [0, 40, 90, 160, 260, 400, 560].map((ms) => setTimeout(restore, ms));
+    // iOS's spurious reset can land well over a second after the transition —
+    // keep re-applying across a generous window, then hand control back.
+    const timers = [0, 40, 90, 160, 260, 400, 560, 800, 1100, 1500].map((ms) => setTimeout(restore, ms));
     const raf = requestAnimationFrame(() => requestAnimationFrame(restore));
-    const end = setTimeout(resume, 720); // reset window has passed — track normally again
+    const end = setTimeout(resume, 1650);
 
     return () => {
       el.removeEventListener("touchstart", resume);
@@ -76,7 +86,7 @@ export default function FeedView() {
       clearTimeout(end);
       saving.current = true;
     };
-  }, [location.pathname]);
+  }, [location.pathname, hasPosts]);
 
   // "Caught up" divider: sits between what was new when you arrived and
   // everything you'd already seen (powered by the seen table).
@@ -154,8 +164,8 @@ export default function FeedView() {
       <Composer
         placeholder="What are you building?"
         listenForPalette
-        onSubmit={async (body, mode) => {
-          await api.createPost(body, mode);
+        onSubmit={async (body, mode, vibe) => {
+          await api.createPost(body, mode, undefined, vibe);
           await refresh();
         }}
       />
