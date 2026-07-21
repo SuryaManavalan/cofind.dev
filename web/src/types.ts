@@ -64,6 +64,12 @@ export interface TrackSummary {
   recent_count: number;
   last_post_at: number | null;
   contributors: Author[];
+  heat: TrackHeat | null;
+}
+
+export interface TrackHeat {
+  tier: "blazing" | "loved" | "steady";
+  label: string;
 }
 
 export interface RelatedTrack {

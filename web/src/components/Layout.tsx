@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Activity, Bot, Flame, GitBranch, Home, LayoutGrid, Menu, Settings as SettingsIcon, Sparkles, Store, TrendingUp, X } from "lucide-react";
+import { Activity, Bot, GitBranch, Home, LayoutGrid, Menu, Settings as SettingsIcon, Sparkles, Store, TrendingUp, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { User } from "../types";
 import { useFeed } from "../feed-context";
@@ -12,6 +12,7 @@ import type { MarketDto } from "../types";
 import { Button } from "@/components/ui/button";
 import Avatar from "./Avatar";
 import { ConvictionCoin } from "./Conviction";
+import HeatFlame from "./HeatFlame";
 import Settings from "./Settings";
 import CommandPalette from "./CommandPalette";
 
@@ -132,7 +133,7 @@ function MovingNow() {
               className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-xs transition-colors hover:bg-accent"
             >
               <span className="truncate font-medium text-success">#{t.slug}</span>
-              {t.recent_count >= 3 && <Flame className="size-3 shrink-0 text-warning" />}
+              <HeatFlame heat={t.heat} className="size-3" />
               <span className="ml-auto shrink-0 text-muted-foreground">
                 {t.post_count} · {t.last_post_at ? timeAgo(t.last_post_at) : ""}
               </span>
