@@ -35,6 +35,8 @@
   --brand: #5374ac;
   --success: #059669;
   --warning: #d97706;
+  /* Conviction — the currency. Gold in every theme; a coin is a coin. */
+  --conviction: #b8860c;
 }
 
 :root[data-mode="dark"] {
@@ -59,6 +61,7 @@
   --brand: #8bafd0;
   --success: #34d399;
   --warning: #fbbf24;
+  --conviction: #f5c518;
 }
 
 /* Zinc — the neutral + violet look */
@@ -229,6 +232,7 @@
   --color-brand: var(--brand);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-conviction: var(--conviction);
 }
 
 @layer base {

@@ -14,6 +14,9 @@ interface FeedState {
   activity: AgentActivity[];
   tracks: TrackSummary[];
   wallet: Wallet | null;
+  amplifyCost: number;
+  amplifyMint: number;
+  setWalletBalance: (balance: number) => void;
   initialUnseen: Set<string>;
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
@@ -36,6 +39,11 @@ export function FeedProvider({ user, children }: { user: User; children: React.R
   const [activity, setActivity] = useState<AgentActivity[]>([]);
   const [tracks, setTracks] = useState<TrackSummary[]>([]);
   const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [amplifyCost, setAmplifyCost] = useState(5);
+  const [amplifyMint, setAmplifyMint] = useState(3);
+  const setWalletBalance = useCallback((balance: number) => {
+    setWallet((w) => (w ? { ...w, balance } : w));
+  }, []);
   const seenSent = useRef(new Set<string>());
   // Snapshot of what was unseen when the session opened — powers the
   // "caught up" divider even after we mark things seen.
@@ -75,7 +83,11 @@ export function FeedProvider({ user, children }: { user: User; children: React.R
   }, [nextCursor, loadingMore]);
 
   useEffect(() => {
-    api.meta().then((r) => setReactions(r.reactions));
+    api.meta().then((r) => {
+      setReactions(r.reactions);
+      if (r.amplify_cost) setAmplifyCost(r.amplify_cost);
+      if (r.amplify_mint) setAmplifyMint(r.amplify_mint);
+    });
     refresh();
     const interval = setInterval(refresh, POLL_MS);
     return () => clearInterval(interval);
@@ -91,7 +103,7 @@ export function FeedProvider({ user, children }: { user: User; children: React.R
   }, [posts]);
 
   return (
-    <FeedContext.Provider value={{ me: user, posts, nextCursor, loadingMore, reactions, members, activity, tracks, wallet, initialUnseen: initialUnseen.current ?? new Set(), refresh, loadMore }}>
+    <FeedContext.Provider value={{ me: user, posts, nextCursor, loadingMore, reactions, members, activity, tracks, wallet, amplifyCost, amplifyMint, setWalletBalance, initialUnseen: initialUnseen.current ?? new Set(), refresh, loadMore }}>
       {children}
     </FeedContext.Provider>
   );

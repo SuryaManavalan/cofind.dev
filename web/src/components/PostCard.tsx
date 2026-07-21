@@ -6,10 +6,14 @@ import { api } from "../api";
 import { burst } from "@/lib/juice";
 import { haptic } from "@/lib/haptics";
 import { REACTION_ICONS, VIBE_ICONS } from "@/lib/icons";
-import { RiFlashlightFill, RiShip2Fill } from "@remixicon/react";
+import { RiShip2Fill } from "@remixicon/react";
 import { cn, timeAgo } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useFeed } from "../feed-context";
 import Avatar from "./Avatar";
+import { ConvictionAmount, ConvictionCoin } from "./Conviction";
 import ViaChip from "./ViaChip";
 import RenderBody from "./RenderBody";
 
@@ -205,6 +209,10 @@ export default function PostCard({
 }) {
   const navigate = useNavigate();
   const [preview, setPreview] = useState<Reply[] | null>(null);
+  const { wallet, amplifyCost, amplifyMint, setWalletBalance } = useFeed();
+  const [confirming, setConfirming] = useState(false);
+  const [amplifying, setAmplifying] = useState(false);
+  const [amplifyError, setAmplifyError] = useState<string | null>(null);
 
   const open = () => navigate(`/post/${post.id}`);
 
@@ -213,16 +221,33 @@ export default function PostCard({
     setPreview(replies.slice(0, REPLY_PREVIEW_COUNT));
   }
 
-  async function doAmplify(e: React.MouseEvent) {
+  const balance = wallet?.balance ?? null;
+  const canAfford = balance === null || balance >= amplifyCost;
+
+  function askAmplify(e: React.MouseEvent) {
     e.stopPropagation();
     if (post.amplified_by_me) return;
+    haptic("light");
+    setAmplifyError(null);
+    setConfirming(true);
+  }
+
+  async function doAmplify(e: React.MouseEvent) {
+    if (amplifying) return;
+    setAmplifying(true);
+    setAmplifyError(null);
+    const { clientX, clientY } = e;
     try {
-      await api.amplify(post.id);
+      const res = await api.amplify(post.id);
+      setWalletBalance(res.amplifier_balance);
+      setConfirming(false);
       haptic("medium");
-      burst(e.clientX, e.clientY, 22);
+      burst(clientX, clientY, 22);
       onChange();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Couldn't amplify");
+      setAmplifyError(err instanceof Error ? err.message : "Couldn't amplify");
+    } finally {
+      setAmplifying(false);
     }
   }
 
@@ -288,11 +313,11 @@ export default function PostCard({
               <TrackChip key={t.slug} track={t} />
             ))}
             <button
-              onClick={doAmplify}
+              onClick={askAmplify}
               disabled={post.amplified_by_me}
-              title={post.amplified_by_me ? "You amplified this" : "Amplify — burn 5 conviction to make this moment glow"}
+              title={post.amplified_by_me ? "You amplified this" : `Amplify — burn ${amplifyCost} conviction to make this moment glow`}
               className={cn(
-                "flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] transition-all",
+                "group/amp flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] transition-all",
                 post.amplified_by_me
                   ? "border-brand/40 bg-brand/15 text-brand"
                   : "border-border text-muted-foreground hover:border-brand/40 hover:text-brand active:scale-90",
@@ -300,10 +325,16 @@ export default function PostCard({
             >
               <Zap className={cn("size-3", post.amplified_by.length > 0 && "fill-current")} />
               {post.amplified_by.length > 0 && <span className="tabular-nums">{post.amplified_by.length}</span>}
+              {!post.amplified_by_me && (
+                <span className="hidden max-w-0 items-center gap-0.5 overflow-hidden tabular-nums text-conviction opacity-0 transition-all duration-200 group-hover/amp:max-w-12 group-hover/amp:opacity-100 sm:inline-flex">
+                  −{amplifyCost}
+                  <ConvictionCoin className="size-2.5" />
+                </span>
+              )}
             </button>
             {post.amplified_by.length > 0 && (
-              <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground" title="Amplified — they spent conviction on this">
-                <RiFlashlightFill className="size-2.5 text-brand" /> {post.amplified_by.map((a) => `@${a.handle}`).join(" ")}
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground" title="Amplified — they spent conviction on this">
+                <ConvictionCoin className="size-2.5 text-conviction" /> {post.amplified_by.map((a) => `@${a.handle}`).join(" ")}
               </span>
             )}
             <button
@@ -329,6 +360,62 @@ export default function PostCard({
           )}
         </div>
       </div>
+
+      <Dialog open={confirming} onOpenChange={(o) => !amplifying && setConfirming(o)}>
+        <DialogContent className="max-w-sm" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <div className="mb-1 flex size-10 items-center justify-center rounded-full border border-conviction/30 bg-conviction/15">
+              <ConvictionCoin className="size-5 text-conviction" />
+            </div>
+            <DialogTitle>Amplify this moment</DialogTitle>
+            <DialogDescription>
+              Burn <ConvictionAmount n={amplifyCost} className="font-semibold" coinClassName="size-3" />{" "}
+              <span className="font-semibold text-conviction">conviction</span> to make @{post.author.handle}&apos;s post glow
+              for the whole room. They mint <ConvictionAmount n={amplifyMint} delta className="font-semibold" coinClassName="size-3" />.
+              Amplifies can&apos;t be taken back.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between rounded-xl border bg-muted/40 px-4 py-3 text-sm">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <ConvictionCoin className="size-3.5 text-conviction" /> Your conviction
+            </span>
+            {balance !== null ? (
+              <span className="flex items-baseline gap-2 tabular-nums">
+                <span className="font-semibold">{balance}</span>
+                <span className="text-muted-foreground">→</span>
+                <span className={cn("font-semibold", canAfford ? "text-conviction" : "text-destructive")}>
+                  {Math.max(0, balance - amplifyCost)}
+                </span>
+              </span>
+            ) : (
+              <span className="text-muted-foreground">…</span>
+            )}
+          </div>
+
+          {!canAfford && (
+            <p className="text-xs text-destructive">
+              You need {amplifyCost} conviction to amplify — earn it by building and shipping.
+            </p>
+          )}
+          {amplifyError && <p className="text-xs text-destructive">{amplifyError}</p>}
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" disabled={amplifying} onClick={() => setConfirming(false)}>
+              Not now
+            </Button>
+            <Button
+              size="sm"
+              disabled={!canAfford || amplifying}
+              onClick={doAmplify}
+              className="bg-brand text-background hover:bg-brand/90"
+            >
+              <ConvictionCoin className="!size-3.5" />
+              {amplifying ? "Amplifying…" : `Burn ${amplifyCost} · Amplify`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </article>
   );
 }

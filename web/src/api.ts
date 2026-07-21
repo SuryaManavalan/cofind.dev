@@ -29,7 +29,7 @@ export const api = {
   me: () => request<{ user: User }>("/me"),
   members: () => request<{ members: Member[] }>("/members"),
   activity: () => request<{ activity: AgentActivity[] }>("/activity"),
-  meta: () => request<{ reactions: string[] }>("/meta"),
+  meta: () => request<{ reactions: string[]; amplify_cost: number; amplify_mint: number }>("/meta"),
   feed: (cursor?: string, filter?: string) => {
     const params = new URLSearchParams();
     if (cursor) params.set("cursor", cursor);
@@ -54,7 +54,7 @@ export const api = {
   graph: () => request<GraphData>("/graph"),
   markets: () => request<{ markets: FloorMarket[]; wallet: Wallet }>("/markets"),
   marketsActivity: () => request<{ activity: TapeEvent[] }>("/markets-activity"),
-  amplify: (post_id: string) => request<{ ok: true }>("/amplify", { method: "POST", body: JSON.stringify({ post_id }) }),
+  amplify: (post_id: string) => request<{ ok: true; amplifier_balance: number }>("/amplify", { method: "POST", body: JSON.stringify({ post_id }) }),
   toast: (slug: string, body: string) => request<{ ok: true }>("/toast", { method: "POST", body: JSON.stringify({ slug, body }) }),
   brief: (handle: string, note: string, post_id?: string) =>
     request<{ ok: true }>("/brief", { method: "POST", body: JSON.stringify({ handle, note, post_id }) }),

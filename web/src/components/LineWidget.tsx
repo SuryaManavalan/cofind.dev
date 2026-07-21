@@ -11,6 +11,7 @@ import { useSlotNumber } from "@/lib/useSlotNumber";
 import { Button } from "@/components/ui/button";
 import Avatar from "./Avatar";
 import PriceChart from "./PriceChart";
+import { ConvictionAmount, ConvictionCoin } from "./Conviction";
 
 // The Line, Kalshi-style (ADR-023): headline price with 24h delta, a real
 // probability chart with crosshair, dual YES/NO price buttons, a trade ticket
@@ -190,7 +191,8 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
       {settled ? (
         line.my.payout ? (
           <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-success">
-            <RiSparkling2Fill className="size-4" /> Your position paid out +{line.my.payout} conviction
+            <RiSparkling2Fill className="size-4" /> Your position paid out{" "}
+            <ConvictionAmount n={line.my.payout} delta className="font-bold" /> conviction
           </p>
         ) : null
       ) : line.insider ? (
@@ -226,7 +228,10 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
 
           {/* trade ticket */}
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <div className="flex overflow-hidden rounded-full border">
+            <div className="flex items-center overflow-hidden rounded-full border" title="How much conviction to stake">
+              <span className="pl-2.5 text-conviction">
+                <ConvictionCoin className="size-3.5" />
+              </span>
               {SPENDS.map((v) => (
                 <button
                   key={v}
@@ -283,7 +288,9 @@ export default function LineWidget({ track, onChanged }: { track: TrackSummary; 
               {line.my.no_shares.toFixed(1)} NO · pays {Math.round(line.my.no_shares * 10)} ✕
             </button>
           )}
-          <span className="ml-auto text-muted-foreground">{line.my.cost_basis} staked</span>
+          <span className="ml-auto flex items-center gap-1 text-muted-foreground" title={`${line.my.cost_basis} conviction staked`}>
+            <ConvictionCoin className="size-3 text-conviction" /> {line.my.cost_basis} staked
+          </span>
         </div>
       )}
 

@@ -11,6 +11,7 @@ import { WEATHER_ICONS } from "@/lib/icons";
 import type { MarketDto } from "../types";
 import { Button } from "@/components/ui/button";
 import Avatar from "./Avatar";
+import { ConvictionCoin } from "./Conviction";
 import Settings from "./Settings";
 import CommandPalette from "./CommandPalette";
 
@@ -148,7 +149,15 @@ function WalletChip() {
   const { wallet } = useFeed();
   const bal = useSlotNumber(wallet?.balance ?? 0, { duration: 900 });
   if (!wallet) return null;
-  return <span className="ml-auto rounded-full bg-brand/10 px-1.5 py-px text-[10px] font-semibold tabular-nums text-brand">{bal}</span>;
+  return (
+    <span
+      title={`${wallet.balance} conviction — the room's currency. Mint it by building; spend it on each other.`}
+      className="ml-auto flex items-center gap-1 rounded-full bg-conviction/10 px-1.5 py-px text-[10px] font-semibold tabular-nums text-conviction"
+    >
+      <ConvictionCoin className="size-3" />
+      {bal}
+    </span>
+  );
 }
 
 // The room's weather (ADR-024): one line of emotional/activity truth.

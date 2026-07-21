@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarClock, Coins, TrendingUp } from "lucide-react";
+import { CalendarClock, TrendingUp } from "lucide-react";
 import type { FloorMarket, TapeEvent, Wallet } from "../types";
 import { api } from "../api";
 import { cn, timeAgo } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { burst } from "@/lib/juice";
 import { haptic } from "@/lib/haptics";
 import { useSlotNumber } from "@/lib/useSlotNumber";
 import PullToRefresh from "../components/PullToRefresh";
+import { ConvictionCoin } from "../components/Conviction";
 
 // The Floor (ADR-023), Kalshi-browse style: a live ticker tape of every
 // trade, the wallet, and market cards with mini charts and dual-price
@@ -120,8 +121,9 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
       <div className="flex items-end justify-between gap-4">
         <div>
           <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-extrabold tabular-nums tracking-tight text-brand">{port}</span>
-            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">portfolio</span>
+            <span className="text-4xl font-extrabold tabular-nums tracking-tight text-conviction">{port}</span>
+            <span className="text-xs font-medium uppercase tracking-wider text-conviction/80">conviction</span>
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">· portfolio</span>
           </div>
           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-muted-foreground">
             <span>
@@ -135,7 +137,7 @@ function WalletCard({ wallet }: { wallet: Wallet }) {
             </span>
           </div>
         </div>
-        <Coins className="hidden size-8 text-brand/40 sm:block" />
+        <ConvictionCoin className="hidden size-9 text-conviction/50 sm:block" />
       </div>
       <CapitalChart history={wallet.history} />
       {wallet.recent.length > 0 && (
@@ -251,6 +253,7 @@ function MarketCard({ m, onTraded }: { m: FloorMarket; onTraded: () => void }) {
             <button
               onClick={(e) => stake("yes", e)}
               disabled={busy}
+              title="Stake 25 conviction on YES"
               className="rounded-lg border border-success/40 px-2.5 py-1 text-[10px] font-extrabold tabular-nums text-success transition-all hover:bg-success/15 active:scale-95"
             >
               YES {yesPrice}¢
@@ -258,6 +261,7 @@ function MarketCard({ m, onTraded }: { m: FloorMarket; onTraded: () => void }) {
             <button
               onClick={(e) => stake("no", e)}
               disabled={busy}
+              title="Stake 25 conviction on NO"
               className="rounded-lg border border-destructive/40 px-2.5 py-1 text-[10px] font-extrabold tabular-nums text-destructive transition-all hover:bg-destructive/15 active:scale-95"
             >
               NO {100 - yesPrice}¢

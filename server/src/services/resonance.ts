@@ -11,8 +11,8 @@ import * as market from "./market.js";
 export const VIBES = ["breakthrough", "charging", "flowing", "grinding", "seeding"] as const;
 export type Vibe = (typeof VIBES)[number];
 
-const AMPLIFY_COST = 5; // burned — the economy's first sink
-const AMPLIFY_MINT = 3; // author mints (once per post per amplifier)
+export const AMPLIFY_COST = 5; // burned — the economy's first sink
+export const AMPLIFY_MINT = 3; // author mints (once per post per amplifier)
 
 // --- amplify ---
 
