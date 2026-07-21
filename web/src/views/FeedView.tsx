@@ -25,32 +25,56 @@ export default function FeedView() {
   // scroll offset an overlay (thread) forces to 0 while it covers the feed.
   const active = useRef(location.pathname === "/");
   active.current = location.pathname === "/";
+  // Frozen during the restore window: iOS's spurious "reset to 0" fires a real
+  // scroll event, and if we recorded it we'd clobber the position we're trying
+  // to restore. So we stop recording until the user actually takes over.
+  const saving = useRef(true);
 
-  // Remember where the feed is scrolled — but only while it's actually on top.
+  // Remember where the feed is scrolled — only while on top and not frozen.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const onScroll = () => {
-      if (active.current) feedScrollMemory = el.scrollTop;
+      if (active.current && saving.current) feedScrollMemory = el.scrollTop;
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
   // When the feed becomes the active route again (back from a thread/profile/
-  // track), restore the remembered offset after layout settles.
+  // track), restore the remembered offset. iOS drops the offset of a scroller
+  // that was under a fixed overlay, and does so on a *late* frame — so we
+  // re-apply across a short window (with saving frozen so the drop can't poison
+  // the memory), and hand control back the moment the user touches to scroll.
   useEffect(() => {
     if (location.pathname !== "/") return;
     if (feedScrollMemory <= 0) return;
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const target = feedScrollMemory;
+    saving.current = false;
+    let done = false;
     const restore = () => {
-      const el = scrollRef.current;
-      if (el) el.scrollTop = feedScrollMemory;
+      if (!done && Math.abs(el.scrollTop - target) > 1) el.scrollTop = target;
     };
+    const resume = () => {
+      done = true;
+      saving.current = true;
+    };
+    // A genuine touch means the user has taken over — stop and resume tracking.
+    el.addEventListener("touchstart", resume, { passive: true });
+
+    const timers = [0, 40, 90, 160, 260, 400, 560].map((ms) => setTimeout(restore, ms));
     const raf = requestAnimationFrame(() => requestAnimationFrame(restore));
-    const timer = setTimeout(restore, 60);
+    const end = setTimeout(resume, 720); // reset window has passed — track normally again
+
     return () => {
+      el.removeEventListener("touchstart", resume);
+      timers.forEach(clearTimeout);
       cancelAnimationFrame(raf);
-      clearTimeout(timer);
+      clearTimeout(end);
+      saving.current = true;
     };
   }, [location.pathname]);
 

@@ -223,15 +223,34 @@ function extractCard(body: string): string | null {
   }
 }
 
+// Posters are authored to breathe at a comfortable width. In the narrow feed
+// column (avatar gutter), rendering at the raw container width made fixed-width
+// card layouts overflow and clip ("100%" → "100"). So previews render the frame
+// at a design width and scale the whole poster down to fit — never clip.
+const POSTER_DESIGN_WIDTH = 440;
+
 function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(PREVIEW_FRAME_MAX);
+  const [boxWidth, setBoxWidth] = useState(0);
   const [themeCss, setThemeCss] = useState(frameThemeCss);
 
   useEffect(() => {
     const onTheme = () => setThemeCss(frameThemeCss());
     window.addEventListener("cofind:theme", onTheme);
     return () => window.removeEventListener("cofind:theme", onTheme);
+  }, []);
+
+  // Track the available width so we can scale the poster to fit it.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => setBoxWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   const cardHtml = variant === "preview" ? extractCard(body) : null;
@@ -255,21 +274,43 @@ function HtmlBody({ body, variant }: { body: string; variant: Variant }) {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
+  // Full view fills its container; previews render at a design width and scale
+  // down to fit so the poster is never horizontally clipped.
+  const logicalWidth = variant === "preview" && boxWidth > 0 ? Math.max(boxWidth, POSTER_DESIGN_WIDTH) : boxWidth || undefined;
+  const scale = variant === "preview" && boxWidth > 0 && logicalWidth ? boxWidth / logicalWidth : 1;
+
   // Applies to carded posters too — the fade is the ellipsis; glyphs never slice raw.
   const truncated = variant === "preview" && contentHeight > maxHeight;
+  const frameHeight = Math.min(contentHeight, maxHeight);
+
+  const iframe = (
+    <iframe
+      ref={iframeRef}
+      // Hostile by default (ADR-004): scripts allowed for the "little artifact"
+      // case, but no same-origin, no top-navigation, no forms, no popups.
+      sandbox="allow-scripts"
+      srcDoc={`${FRAME_PRELUDE}<style>${themeCss}</style>${previewCss}${frameBody}`}
+      className="rounded-lg border bg-muted/40 transition-[height]"
+      style={
+        variant === "preview" && logicalWidth
+          ? { width: logicalWidth, height: frameHeight, transform: `scale(${scale})`, transformOrigin: "top left" }
+          : { width: "100%", height: frameHeight }
+      }
+      title="post content"
+    />
+  );
 
   return (
-    <div className="relative">
-      <iframe
-        ref={iframeRef}
-        // Hostile by default (ADR-004): scripts allowed for the "little artifact"
-        // case, but no same-origin, no top-navigation, no forms, no popups.
-        sandbox="allow-scripts"
-        srcDoc={`${FRAME_PRELUDE}<style>${themeCss}</style>${previewCss}${frameBody}`}
-        className="w-full rounded-lg border bg-muted/40 transition-[height]"
-        style={{ height: Math.min(contentHeight, maxHeight) }}
-        title="post content"
-      />
+    <div className="relative" ref={wrapRef}>
+      {variant === "preview" ? (
+        // Scaled poster: the outer box occupies the on-screen (scaled) size and
+        // clips the transform overflow; the iframe is laid out at design width.
+        <div className="overflow-hidden" style={{ height: frameHeight * scale }}>
+          {iframe}
+        </div>
+      ) : (
+        iframe
+      )}
       {variant === "preview" && (
         // Click-shield: the sandboxed frame would otherwise swallow clicks, making
         // the card dead to "open the thread." Previews are look-only; interaction
