@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MessageCircle, Plus, Zap } from "lucide-react";
 import type { PostSummary, ReactionSummary, Reply, TrackRef } from "../types";
@@ -16,6 +16,84 @@ import Avatar from "./Avatar";
 import { ConvictionAmount, ConvictionCoin } from "./Conviction";
 import ViaChip from "./ViaChip";
 import RenderBody from "./RenderBody";
+
+// One reaction pill. On your own posts the server includes who reacted —
+// peek at it by hovering (desktop) or long-pressing (touch); a plain tap
+// still toggles, so the peek costs no interaction surface.
+function ReactionPill({ r, onToggle }: { r: ReactionSummary; onToggle: (e: React.MouseEvent) => void }) {
+  const [peek, setPeek] = useState(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressTap = useRef(false);
+  const canPeek = !!r.reactors?.length;
+
+  // Touch peeks dismiss on the next tap anywhere.
+  useEffect(() => {
+    if (!peek) return;
+    const close = () => setPeek(false);
+    const arm = setTimeout(() => document.addEventListener("pointerdown", close, { once: true }), 0);
+    return () => {
+      clearTimeout(arm);
+      document.removeEventListener("pointerdown", close);
+    };
+  }, [peek]);
+
+  function clearTimers() {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+  }
+
+  const meta = REACTION_ICONS[r.reaction];
+  const RIcon = meta?.Icon;
+  return (
+    <span className="relative">
+      <button
+        onClick={(e) => {
+          if (suppressTap.current) {
+            suppressTap.current = false;
+            return;
+          }
+          onToggle(e);
+        }}
+        onPointerEnter={(e) => {
+          if (canPeek && e.pointerType === "mouse") hoverTimer.current = setTimeout(() => setPeek(true), 350);
+        }}
+        onPointerLeave={() => {
+          clearTimers();
+          setPeek(false);
+        }}
+        onPointerDown={(e) => {
+          if (canPeek && e.pointerType !== "mouse")
+            pressTimer.current = setTimeout(() => {
+              suppressTap.current = true;
+              haptic("light");
+              setPeek(true);
+            }, 450);
+        }}
+        onPointerUp={clearTimers}
+        onPointerCancel={clearTimers}
+        className={cn(
+          "flex h-6 select-none items-center gap-1 rounded-full border px-2 text-[11px] tabular-nums transition-colors",
+          r.reacted_by_me
+            ? "border-brand/40 bg-brand/10 text-foreground"
+            : "border-border bg-transparent text-muted-foreground hover:border-ring hover:text-foreground",
+        )}
+      >
+        {RIcon ? <RIcon className={cn("size-3.5", meta!.color)} /> : <span className="text-sm leading-none">{r.reaction}</span>} {r.count}
+      </button>
+      {peek && r.reactors && (
+        <span className="absolute bottom-8 left-0 z-20 block w-max max-w-52 rounded-xl border bg-popover p-2 shadow-md animate-in fade-in-0 zoom-in-95">
+          {r.reactors.map((u) => (
+            <span key={u.handle} className="flex items-center gap-1.5 py-0.5 text-[11px] text-foreground">
+              <Avatar handle={u.handle} name={u.display_name} className="size-4 text-[7px]" />
+              {u.display_name}
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
 
 export function ReactionBar({
   targetId,
@@ -42,27 +120,7 @@ export function ReactionBar({
   return (
     <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
       {reactions.map((r) => (
-        <button
-          key={r.reaction}
-          onClick={(e) => toggle(r.reaction, e)}
-          className={cn(
-            "flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] tabular-nums transition-colors",
-            r.reacted_by_me
-              ? "border-brand/40 bg-brand/10 text-foreground"
-              : "border-border bg-transparent text-muted-foreground hover:border-ring hover:text-foreground",
-          )}
-        >
-          {REACTION_ICONS[r.reaction] ? (
-            (() => {
-              const meta = REACTION_ICONS[r.reaction]!;
-              const RIcon = meta.Icon;
-              return <RIcon className={cn("size-3.5", meta.color)} />;
-            })()
-          ) : (
-            <span className="text-sm leading-none">{r.reaction}</span>
-          )}{" "}
-          {r.count}
-        </button>
+        <ReactionPill key={r.reaction} r={r} onToggle={(e) => toggle(r.reaction, e)} />
       ))}
       <div className="relative">
         <button

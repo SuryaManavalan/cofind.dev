@@ -23,6 +23,8 @@ export interface ReactionSummary {
   reaction: string;
   count: number;
   reacted_by_me: boolean;
+  // Present only when the viewer authored the target.
+  reactors?: { handle: string; display_name: string }[];
 }
 
 export type Via = "web" | "agent";
@@ -82,14 +84,31 @@ function validateRenderMode(mode: string): asserts mode is RenderMode {
   if (!RENDER_MODES.includes(mode as RenderMode)) throw new ApiError(400, "render_mode must be text, markdown, or html");
 }
 
-function reactionSummaries(targetType: "post" | "reply", targetId: string, viewerId: string): ReactionSummary[] {
+function reactionSummaries(targetType: "post" | "reply", targetId: string, viewerId: string, authorId?: string): ReactionSummary[] {
   const rows = db
     .prepare(
       `SELECT reaction, COUNT(*) AS count, MAX(user_id = ?) AS reacted_by_me
        FROM reactions WHERE target_type = ? AND target_id = ? GROUP BY reaction`,
     )
     .all(viewerId, targetType, targetId) as { reaction: string; count: number; reacted_by_me: number }[];
-  return rows.map((r) => ({ reaction: r.reaction, count: r.count, reacted_by_me: !!r.reacted_by_me }));
+  // Who reacted is only revealed to the author of the target — a quiet perk
+  // of your own posts, not surveillance of everyone's.
+  const reveal = authorId !== undefined && authorId === viewerId;
+  return rows.map((r) => ({
+    reaction: r.reaction,
+    count: r.count,
+    reacted_by_me: !!r.reacted_by_me,
+    ...(reveal
+      ? {
+          reactors: db
+            .prepare(
+              `SELECT u.handle, u.display_name FROM reactions rx JOIN users u ON u.id = rx.user_id
+               WHERE rx.target_type = ? AND rx.target_id = ? AND rx.reaction = ? ORDER BY rx.created_at ASC`,
+            )
+            .all(targetType, targetId, r.reaction) as { handle: string; display_name: string }[],
+        }
+      : {}),
+  }));
 }
 
 interface PostRow {
@@ -117,7 +136,7 @@ function toSummary(row: PostRow, viewerId: string): PostSummary {
     created_at: row.created_at,
     edited_at: row.edited_at,
     reply_count: row.reply_count,
-    reactions: reactionSummaries("post", row.id, viewerId),
+    reactions: reactionSummaries("post", row.id, viewerId, row.author_id),
     seen_by_me: !!db.prepare("SELECT 1 FROM seen WHERE user_id = ? AND post_id = ?").get(viewerId, row.id),
     tracks: db
       .prepare(
@@ -238,7 +257,7 @@ export function getPost(viewerId: string, postId: string): { post: PostSummary; 
       render_mode: r.render_mode,
       via: r.via,
       created_at: r.created_at,
-      reactions: reactionSummaries("reply", r.id, viewerId),
+      reactions: reactionSummaries("reply", r.id, viewerId, r.author_id),
     })),
   };
 }

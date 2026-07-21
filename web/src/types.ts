@@ -21,6 +21,8 @@ export interface ReactionSummary {
   reaction: string;
   count: number;
   reacted_by_me: boolean;
+  // Only present on your own posts/replies — who left each reaction.
+  reactors?: { handle: string; display_name: string }[];
 }
 
 export interface PostSummary {
