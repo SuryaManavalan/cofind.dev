@@ -4,6 +4,7 @@ import { ApiError } from "./util.js";
 import * as users from "./services/users.js";
 import * as posts from "./services/posts.js";
 import * as market from "./services/market.js";
+import * as resonance from "./services/resonance.js";
 
 type Env = { Variables: { user: users.User } };
 
@@ -79,9 +80,9 @@ api.get("/feed", (c) => {
 api.get("/posts/:id", (c) => c.json(posts.getPost(c.get("user").id, c.req.param("id"))));
 
 api.post("/posts", async (c) => {
-  const { body, render_mode, idempotency_key, tracks } = await c.req.json();
+  const { body, render_mode, idempotency_key, tracks, vibe } = await c.req.json();
   return c.json(
-    posts.createPost(c.get("user").id, body ?? "", render_mode ?? "text", idempotency_key, "web", Array.isArray(tracks) ? tracks : []),
+    posts.createPost(c.get("user").id, body ?? "", render_mode ?? "text", idempotency_key, "web", Array.isArray(tracks) ? tracks : [], vibe),
     201,
   );
 });
@@ -127,6 +128,21 @@ api.get("/graph", (c) => c.json(posts.graphData()));
 api.get("/markets", (c) => c.json(market.listMarkets(c.get("user").id)));
 api.get("/wallet", (c) => c.json(market.wallet(c.get("user").id)));
 api.get("/markets-activity", (c) => c.json({ activity: market.recentActivity() }));
+
+// Resonance (ADR-024)
+api.post("/amplify", async (c) => {
+  const { post_id } = await c.req.json();
+  return c.json(resonance.amplify(c.get("user").id, post_id ?? ""));
+});
+api.post("/toast", async (c) => {
+  const { slug, body } = await c.req.json();
+  return c.json(resonance.toastShip(c.get("user").id, slug ?? "", body ?? ""), 201);
+});
+api.post("/brief", async (c) => {
+  const { handle, note, post_id } = await c.req.json();
+  return c.json(resonance.briefAgent(c.get("user").id, handle ?? "", note ?? "", post_id), 201);
+});
+api.get("/weather", (c) => c.json({ weather: resonance.roomWeather() }));
 api.get("/tracks-line/:id", (c) => c.json({ line: market.marketForTrack(c.req.param("id"), c.get("user").id) }));
 api.post("/markets/open", async (c) => {
   const { slug, target_at } = await c.req.json();
@@ -147,8 +163,8 @@ api.post("/tracks-ship", async (c) => {
 });
 
 api.patch("/profile", async (c) => {
-  const { display_name, bio, link } = await c.req.json();
-  return c.json({ user: users.updateProfile(c.get("user").id, { display_name, bio, link }) });
+  const { display_name, bio, link, manifesting } = await c.req.json();
+  return c.json({ user: users.updateProfile(c.get("user").id, { display_name, bio, link, manifesting }) });
 });
 
 // --- personal access tokens (agent auth; ADR-010) ---

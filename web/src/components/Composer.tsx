@@ -14,6 +14,15 @@ const MODES: { value: RenderMode; label: string; hint: string }[] = [
   { value: "html", label: "html", hint: "Sandboxed HTML artifact" },
 ];
 
+// ADR-024: how the building feels right now. Optional, one tap, feeds the weather.
+const VIBE_OPTIONS = [
+  { value: "breakthrough", icon: "✨" },
+  { value: "charging", icon: "🔥" },
+  { value: "flowing", icon: "🌊" },
+  { value: "grinding", icon: "🌫" },
+  { value: "seeding", icon: "🌱" },
+];
+
 function AgentDraftDialog({
   open,
   onOpenChange,
@@ -69,12 +78,13 @@ export default function Composer({
 }: {
   placeholder: string;
   defaultMode?: RenderMode;
-  onSubmit: (body: string, mode: RenderMode) => Promise<void>;
+  onSubmit: (body: string, mode: RenderMode, vibe?: string) => Promise<void>;
   postId?: string;
   listenForPalette?: boolean;
 }) {
   const [body, setBody] = useState("");
   const [mode, setMode] = useState<RenderMode>(defaultMode);
+  const [vibe, setVibe] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -172,7 +182,8 @@ export default function Composer({
     setSending(true);
     setError(null);
     try {
-      await onSubmit(trimmed, mode);
+      await onSubmit(trimmed, mode, vibe ?? undefined);
+      setVibe(null);
       setBody("");
       setPreviewing(false);
       if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -303,6 +314,21 @@ export default function Composer({
             )}
           >
             {m.label}
+          </button>
+        ))}
+        <span className="mx-1 h-3 w-px bg-border" />
+        {/* Vibe (ADR-024): the emotional texture of this moment — one optional tap */}
+        {VIBE_OPTIONS.map((v) => (
+          <button
+            key={v.value}
+            onClick={() => setVibe(vibe === v.value ? null : v.value)}
+            title={`vibe: ${v.value}`}
+            className={cn(
+              "rounded-md px-1 py-0.5 text-[13px] leading-none transition-all",
+              vibe === v.value ? "bg-brand/15 ring-1 ring-brand/40 scale-110" : "opacity-45 hover:opacity-100",
+            )}
+          >
+            {v.icon}
           </button>
         ))}
         {canPreview && (

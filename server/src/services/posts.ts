@@ -1,6 +1,7 @@
 import { db } from "../db.js";
 import { ApiError, newId } from "../util.js";
 import * as market from "./market.js";
+import * as resonance from "./resonance.js";
 
 export type RenderMode = "text" | "markdown" | "html";
 export const RENDER_MODES: RenderMode[] = ["text", "markdown", "html"];
@@ -38,6 +39,9 @@ export interface PostSummary {
   reactions: ReactionSummary[];
   seen_by_me: boolean;
   tracks: TrackRef[];
+  vibe: string | null;
+  amplified_by: { handle: string; display_name: string }[];
+  amplified_by_me: boolean;
 }
 
 export interface TrackRef {
@@ -100,6 +104,7 @@ interface PostRow {
   edited_at: number | null;
   sort_key: number;
   reply_count: number;
+  vibe: string | null;
 }
 
 function toSummary(row: PostRow, viewerId: string): PostSummary {
@@ -119,11 +124,14 @@ function toSummary(row: PostRow, viewerId: string): PostSummary {
         "SELECT t.slug, t.title FROM post_tracks pt JOIN tracks t ON t.id = pt.track_id WHERE pt.post_id = ? ORDER BY pt.created_at",
       )
       .all(row.id) as TrackRef[],
+    vibe: row.vibe,
+    amplified_by: resonance.amplifiersOf(row.id),
+    amplified_by_me: !!db.prepare("SELECT 1 FROM amplifies WHERE post_id = ? AND user_id = ?").get(row.id, viewerId),
   };
 }
 
 const POST_SELECT = `
-  SELECT p.id, p.author_id, u.handle, u.display_name, p.body, p.render_mode, p.via, p.created_at, p.edited_at, p.sort_key,
+  SELECT p.id, p.author_id, u.handle, u.display_name, p.body, p.render_mode, p.via, p.created_at, p.edited_at, p.sort_key, p.vibe,
          (SELECT COUNT(*) FROM replies r WHERE r.post_id = p.id) AS reply_count
   FROM posts p JOIN users u ON u.id = p.author_id`;
 
@@ -176,6 +184,8 @@ export function catchUp(viewerId: string): {
   asks: Ask[];
   tracks_moved: { slug: string; title: string; new_stops: number }[];
   the_line: ReturnType<typeof market.lineDigest>;
+  briefings: resonance.BriefingDto[];
+  room_weather: string;
   note: string;
 } {
   const unseen = readFeed(viewerId, { filter: "unseen", limit: 20 });
@@ -199,6 +209,8 @@ export function catchUp(viewerId: string): {
     asks,
     tracks_moved: tracksMoved,
     the_line: market.lineDigest(viewerId, Date.now() - 7 * 86400000),
+    briefings: resonance.collectBriefings(viewerId),
+    room_weather: resonance.roomWeather(),
     note:
       (count === 0 ? "Your human is fully caught up on the room. " : "Summarize these conversationally for your human — lead with milestones and questions addressed to them. ") +
       (asks.length > 0
@@ -238,9 +250,12 @@ export function createPost(
   idempotencyKey?: string,
   via: Via = "web",
   trackSlugs: string[] = [],
+  vibe?: string,
 ): { post_id: string } {
   validateBody(body);
   validateRenderMode(renderMode);
+  if (vibe !== undefined && vibe !== null && !(resonance.VIBES as readonly string[]).includes(vibe))
+    throw new ApiError(400, `vibe must be one of: ${resonance.VIBES.join(", ")}`);
   body = normalizeTrackSugar(body, authorId, renderMode);
 
   if (idempotencyKey) {
@@ -255,8 +270,8 @@ export function createPost(
   const now = Date.now();
   // sort_key = created_at for v0 reverse-chron (ADR-002); v1 engagement bump recomputes this field.
   db.prepare(
-    "INSERT INTO posts (id, author_id, body, render_mode, via, created_at, sort_key, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-  ).run(id, authorId, body, renderMode, via, now, now, idempotencyKey ?? null);
+    "INSERT INTO posts (id, author_id, body, render_mode, via, created_at, sort_key, idempotency_key, vibe) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(id, authorId, body, renderMode, via, now, now, idempotencyKey ?? null, vibe ?? null);
   recordMentions("post", id, id, authorId, body);
   attachTracks(id, authorId, body, renderMode, trackSlugs);
   // conviction: a stop on a track earns more than a loose post (ADR-023)
@@ -568,7 +583,10 @@ export function listTracks(): TrackSummary[] {
 }
 
 // A track reads chronologically — it's the story of the thing being built.
-export function getTrack(viewerId: string, slug: string): { track: TrackSummary; posts: PostSummary[]; related: RelatedTrack[] } {
+export function getTrack(
+  viewerId: string,
+  slug: string,
+): { track: TrackSummary; posts: PostSummary[]; related: RelatedTrack[]; toasts: resonance.Toast[] } {
   const row = db.prepare("SELECT id, slug, title, description, owner_id, shipped_at, created_at FROM tracks WHERE slug = ?").get(slug.toLowerCase()) as
     | Parameters<typeof trackSummary>[0]
     | undefined;
@@ -576,7 +594,12 @@ export function getTrack(viewerId: string, slug: string): { track: TrackSummary;
   const postRows = db
     .prepare(`${POST_SELECT} JOIN post_tracks pt ON pt.post_id = p.id WHERE pt.track_id = ? ORDER BY p.created_at ASC`)
     .all(row.id) as PostRow[];
-  return { track: trackSummary(row), posts: postRows.map((r) => toSummary(r, viewerId)), related: relatedTracks(row.id) };
+  return {
+    track: trackSummary(row),
+    posts: postRows.map((r) => toSummary(r, viewerId)),
+    related: relatedTracks(row.id),
+    toasts: resonance.toastsFor(row.id),
+  };
 }
 
 export interface RelatedTrack {

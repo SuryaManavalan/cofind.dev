@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowDownUp, ArrowLeft, Check, Flame, Pencil, Ship } from "lucide-react";
-import type { PostSummary, RelatedTrack, TrackSummary } from "../types";
+import type { PostSummary, RelatedTrack, TrackSummary, Toast } from "../types";
 import { api } from "../api";
 import { useFeed } from "../feed-context";
 import { cn, timeAgo } from "@/lib/utils";
@@ -12,7 +12,7 @@ import PostCard from "../components/PostCard";
 import PullToRefresh from "../components/PullToRefresh";
 import Composer from "../components/Composer";
 import LineWidget from "../components/LineWidget";
-import { fireworks } from "@/lib/juice";
+import { burst, fireworks } from "@/lib/juice";
 
 // A track is the story of one thing being built. Newest-first by default
 // (consistent with the whole app); "from the start" toggle for narrative reads.
@@ -24,6 +24,8 @@ export default function TrackView() {
   const [track, setTrack] = useState<TrackSummary | null>(null);
   const [posts, setPosts] = useState<PostSummary[]>([]);
   const [related, setRelated] = useState<RelatedTrack[]>([]);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [toastDraft, setToastDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [desc, setDesc] = useState("");
@@ -36,6 +38,7 @@ export default function TrackView() {
       setTrack(data.track);
       setPosts(data.posts);
       setRelated(data.related);
+      setToasts(data.toasts);
       setDesc(data.track.description ?? "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load track");
@@ -68,6 +71,14 @@ export default function TrackView() {
     const next = !oldestFirst;
     setOldestFirst(next);
     localStorage.setItem("cofind-track-order", next ? "story" : "latest");
+  }
+
+  async function sendToast() {
+    if (!slug || !toastDraft?.trim()) return;
+    await api.toast(slug, toastDraft.trim());
+    setToastDraft(null);
+    burst(window.innerWidth / 2, window.innerHeight / 3, 24);
+    await load();
   }
 
   async function toggleShip() {
@@ -150,6 +161,55 @@ export default function TrackView() {
         {error && <p className="px-6 py-8 text-sm text-destructive">{error}</p>}
 
         {track && <LineWidget key={track.id} track={track} onChanged={refreshFeed} />}
+
+        {/* Toasts (ADR-024): the room gathers around a ship. */}
+        {track && isShipped && (
+          <div className="border-b bg-gradient-to-b from-success/[0.04] to-transparent px-4 py-3 sm:px-6">
+            <h3 className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              🥂 Toasts
+            </h3>
+            {toasts.length > 0 && (
+              <ul className="space-y-1.5">
+                {toasts.map((t) => (
+                  <li key={t.handle} className="flex items-start gap-2 text-sm">
+                    <Avatar handle={t.handle} name={t.display_name} className="mt-0.5 size-5 text-[9px]" />
+                    <span className="leading-snug">
+                      <span className="font-semibold">@{t.handle}</span>{" "}
+                      <span className="text-foreground/90">{t.body}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!toasts.some((t) => t.handle.toLowerCase() === me.handle.toLowerCase()) &&
+              !(track.owner ? track.owner.handle.toLowerCase() === me.handle.toLowerCase() : track.contributors.some((c) => c.handle === me.handle)) && (
+                <div className="mt-2">
+                  {toastDraft === null ? (
+                    <button
+                      onClick={() => setToastDraft("")}
+                      className="rounded-full border border-success/30 bg-success/5 px-3 py-1 text-xs text-success transition-colors hover:bg-success/15"
+                    >
+                      🥂 Raise a toast
+                    </button>
+                  ) : (
+                    <div className="flex gap-1.5">
+                      <Input
+                        value={toastDraft}
+                        onChange={(e) => setToastDraft(e.target.value)}
+                        placeholder="One line for the shipper — make it specific"
+                        maxLength={140}
+                        autoFocus
+                        onKeyDown={(e) => e.key === "Enter" && sendToast()}
+                      />
+                      <Button size="sm" className="h-9 shrink-0" onClick={sendToast} disabled={!toastDraft.trim()}>
+                        Toast
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+          </div>
+        )}
 
         {track && (
           <div className="border-b px-4 py-3 sm:px-6">
@@ -238,8 +298,8 @@ export default function TrackView() {
         <Composer
           placeholder={`Add the next stop on #${slug}…`}
           defaultMode="markdown"
-          onSubmit={async (body, mode) => {
-            await api.createPost(body, mode, [slug]);
+          onSubmit={async (body, mode, vibe) => {
+            await api.createPost(body, mode, [slug], vibe);
             await Promise.all([load(), refreshFeed()]);
           }}
         />

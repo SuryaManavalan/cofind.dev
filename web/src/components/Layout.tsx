@@ -85,6 +85,7 @@ function MembersRail() {
         </ul>
       </div>
 
+      <RoomWeather />
       <TheLineTicker />
       <MovingNow />
 
@@ -146,6 +147,24 @@ function WalletChip() {
   const bal = useSlotNumber(wallet?.balance ?? 0, { duration: 900 });
   if (!wallet) return null;
   return <span className="ml-auto rounded-full bg-brand/10 px-1.5 py-px text-[10px] font-semibold tabular-nums text-brand">{bal}</span>;
+}
+
+// The room's weather (ADR-024): one line of emotional/activity truth.
+function RoomWeather() {
+  const [weather, setWeather] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    const load = () => api.weather().then((r) => { if (live) setWeather(r.weather); }).catch(() => {});
+    load();
+    const t = setInterval(load, 60000);
+    return () => { live = false; clearInterval(t); };
+  }, []);
+  if (!weather) return null;
+  return (
+    <p className="rounded-lg border border-dashed px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground" title="Room weather — the last 48h, felt">
+      {weather}
+    </p>
+  );
 }
 
 // The rail's ticker: lines with the biggest 24h swing — where the room disagrees.

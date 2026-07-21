@@ -154,8 +154,8 @@ export default function FeedView() {
       <Composer
         placeholder="What are you building?"
         listenForPalette
-        onSubmit={async (body, mode) => {
-          await api.createPost(body, mode);
+        onSubmit={async (body, mode, vibe) => {
+          await api.createPost(body, mode, undefined, vibe);
           await refresh();
         }}
       />

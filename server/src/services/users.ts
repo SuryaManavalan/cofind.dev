@@ -11,6 +11,7 @@ export interface User {
   display_name: string;
   created_at: number;
   bio?: string | null;
+  manifesting?: string | null;
   link?: string | null;
 }
 
@@ -18,7 +19,7 @@ export interface Member extends User {
   last_active_at: number | null;
 }
 
-const userColumns = "id, handle, display_name, created_at, bio, link";
+const userColumns = "id, handle, display_name, created_at, bio, link, manifesting";
 
 // Presence (plan doc OPEN item, resolved): bump on authed web activity,
 // throttled in-memory so it isn't a write per request.
@@ -133,14 +134,22 @@ export function userFromAccessToken(token: string): User | null {
   return user;
 }
 
-export function updateProfile(userId: string, fields: { display_name?: string; bio?: string; link?: string }): User {
+export function updateProfile(userId: string, fields: { display_name?: string; bio?: string; link?: string; manifesting?: string }): User {
   const current = db.prepare(`SELECT ${userColumns} FROM users WHERE id = ?`).get(userId) as User;
   const displayName = fields.display_name?.trim() || current.display_name;
   const bio = fields.bio !== undefined ? fields.bio.trim().slice(0, 200) || null : (current.bio ?? null);
   let link = fields.link !== undefined ? fields.link.trim() || null : (current.link ?? null);
   if (link && !/^https?:\/\//.test(link)) link = `https://${link}`;
-  db.prepare("UPDATE users SET display_name = ?, bio = ?, link = ? WHERE id = ?").run(displayName, bio, link, userId);
-  return { ...current, display_name: displayName, bio, link };
+  const manifesting =
+    fields.manifesting !== undefined ? fields.manifesting.trim().slice(0, 160) || null : (current.manifesting ?? null);
+  db.prepare("UPDATE users SET display_name = ?, bio = ?, link = ?, manifesting = ? WHERE id = ?").run(
+    displayName,
+    bio,
+    link,
+    manifesting,
+    userId,
+  );
+  return { ...current, display_name: displayName, bio, link, manifesting };
 }
 
 export function listMembers(): Member[] {

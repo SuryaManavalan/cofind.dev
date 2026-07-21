@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle, Plus } from "lucide-react";
+import { MessageCircle, Plus, Zap } from "lucide-react";
 import type { PostSummary, ReactionSummary, Reply, TrackRef } from "../types";
 import { api } from "../api";
 import { burst } from "@/lib/juice";
@@ -169,6 +169,15 @@ export function TrackChip({ track }: { track: TrackRef }) {
   );
 }
 
+// ADR-024: emotional texture chips — tinted with theme tokens so they shift per palette.
+const VIBE_CHIP: Record<string, { icon: string; label: string; cls: string }> = {
+  breakthrough: { icon: "✨", label: "breakthrough", cls: "border-brand/30 bg-brand/10 text-brand" },
+  charging: { icon: "🔥", label: "charging", cls: "border-warning/30 bg-warning/10 text-warning" },
+  flowing: { icon: "🌊", label: "flowing", cls: "border-success/30 bg-success/10 text-success" },
+  grinding: { icon: "🌫", label: "grinding", cls: "border-border bg-muted/50 text-muted-foreground" },
+  seeding: { icon: "🌱", label: "seeding", cls: "border-success/30 bg-success/5 text-success" },
+};
+
 const REPLY_PREVIEW_COUNT = 3;
 
 export default function PostCard({
@@ -190,6 +199,18 @@ export default function PostCard({
     setPreview(replies.slice(0, REPLY_PREVIEW_COUNT));
   }
 
+  async function doAmplify(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (post.amplified_by_me) return;
+    try {
+      await api.amplify(post.id);
+      burst(e.clientX, e.clientY, 22);
+      onChange();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Couldn't amplify");
+    }
+  }
+
   async function togglePreview(e: React.MouseEvent) {
     e.stopPropagation();
     if (preview) setPreview(null);
@@ -199,7 +220,10 @@ export default function PostCard({
   return (
     <article
       onClick={open}
-      className="group cursor-pointer border-b px-4 py-4 transition-colors hover:bg-accent/40 sm:px-6"
+      className={cn(
+        "group cursor-pointer border-b px-4 py-4 transition-colors hover:bg-accent/40 sm:px-6",
+        post.amplified_by.length > 0 && "bg-gradient-to-r from-brand/[0.05] via-transparent to-transparent shadow-[inset_2px_0_0_0_var(--brand)]",
+      )}
     >
       <div className="flex gap-3">
         <Avatar handle={post.author.handle} name={post.author.display_name} />
@@ -220,6 +244,14 @@ export default function PostCard({
                 ↻ {timeAgo(post.edited_at)}
               </span>
             )}
+            {post.vibe && VIBE_CHIP[post.vibe] && (
+              <span
+                className={cn("inline-flex h-5 items-center gap-1 rounded-full border px-1.5 text-[10px] font-medium", VIBE_CHIP[post.vibe]!.cls)}
+                title={`vibe: ${VIBE_CHIP[post.vibe]!.label}`}
+              >
+                {VIBE_CHIP[post.vibe]!.icon} {VIBE_CHIP[post.vibe]!.label}
+              </span>
+            )}
             {post.render_mode !== "text" && (
               <Badge variant={post.render_mode === "html" ? "brand" : "outline"} className="ml-auto">
                 {post.render_mode === "markdown" ? "md" : post.render_mode}
@@ -236,6 +268,25 @@ export default function PostCard({
             {post.tracks.map((t) => (
               <TrackChip key={t.slug} track={t} />
             ))}
+            <button
+              onClick={doAmplify}
+              disabled={post.amplified_by_me}
+              title={post.amplified_by_me ? "You amplified this" : "Amplify — burn 5 conviction to make this moment glow"}
+              className={cn(
+                "flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] transition-all",
+                post.amplified_by_me
+                  ? "border-brand/40 bg-brand/15 text-brand"
+                  : "border-border text-muted-foreground hover:border-brand/40 hover:text-brand active:scale-90",
+              )}
+            >
+              <Zap className={cn("size-3", post.amplified_by.length > 0 && "fill-current")} />
+              {post.amplified_by.length > 0 && <span className="tabular-nums">{post.amplified_by.length}</span>}
+            </button>
+            {post.amplified_by.length > 0 && (
+              <span className="text-[10px] text-muted-foreground" title="Amplified — they spent conviction on this">
+                ⚡ {post.amplified_by.map((a) => `@${a.handle}`).join(" ")}
+              </span>
+            )}
             <button
               onClick={post.reply_count > 0 ? togglePreview : open}
               className="flex h-6 items-center gap-1.5 rounded-full px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

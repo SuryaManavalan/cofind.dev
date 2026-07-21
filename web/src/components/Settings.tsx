@@ -28,11 +28,12 @@ export default function Settings({
   const [mode, setModeState] = useState<Mode>(getMode());
   const [displayName, setDisplayName] = useState(user.display_name);
   const [bio, setBio] = useState(user.bio ?? "");
+  const [manifesting, setManifesting] = useState(user.manifesting ?? "");
   const [link, setLink] = useState(user.link ?? "");
   const [profileSaved, setProfileSaved] = useState(false);
 
   async function saveProfile() {
-    await api.updateProfile({ display_name: displayName, bio, link });
+    await api.updateProfile({ display_name: displayName, bio, link, manifesting });
     setProfileSaved(true);
     setTimeout(() => setProfileSaved(false), 1500);
   }
@@ -99,6 +100,12 @@ export default function Settings({
           <div className="mt-3 space-y-2">
             <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Display name" />
             <Input value={bio} onChange={(e) => setBio(e.target.value)} placeholder="One line about what you're building (200 chars)" maxLength={200} />
+            <Input
+              value={manifesting}
+              onChange={(e) => setManifesting(e.target.value)}
+              placeholder="🌟 What are you manifesting? Your north star (160 chars)"
+              maxLength={160}
+            />
             <div className="flex gap-2">
               <Input value={link} onChange={(e) => setLink(e.target.value)} placeholder="Link (your product, your site…)" />
               <Button onClick={saveProfile} className="shrink-0" variant={profileSaved ? "secondary" : "default"}>
