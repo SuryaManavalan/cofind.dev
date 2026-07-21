@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowDownUp, ArrowLeft, Check, Flame, Pencil, Ship } from "lucide-react";
+import { ArrowDownUp, ArrowLeft, Check, Pencil, Ship } from "lucide-react";
 import type { PostSummary, RelatedTrack, TrackSummary, Toast } from "../types";
 import { api } from "../api";
 import { useFeed } from "../feed-context";
@@ -15,6 +15,7 @@ import LineWidget from "../components/LineWidget";
 import { burst, fireworks } from "@/lib/juice";
 import { haptic } from "@/lib/haptics";
 import { RiGobletLine, RiShip2Fill } from "@remixicon/react";
+import HeatFlame from "../components/HeatFlame";
 
 // A track is the story of one thing being built. Newest-first by default
 // (consistent with the whole app); "from the start" toggle for narrative reads.
@@ -102,7 +103,7 @@ export default function TrackView() {
   const canPost = !isShipped && (!isPersonal || track?.owner?.handle.toLowerCase() === me.handle.toLowerCase());
   const canShip =
     !!track && (isPersonal ? track.owner!.handle.toLowerCase() === me.handle.toLowerCase() : track.contributors.some((c) => c.handle === me.handle));
-  const hot = !!track && !isShipped && track.recent_count >= 3;
+  const heat = !isShipped ? track?.heat : null;
   const daysBuilt = track ? Math.max(1, Math.round(((track.shipped_at ?? Date.now()) - track.created_at) / 86400000)) : 0;
 
   const ordered = oldestFirst ? posts : [...posts].reverse();
@@ -127,7 +128,7 @@ export default function TrackView() {
                 @{track.owner.handle}'s
               </span>
             )}
-            {hot && <Flame className="size-3.5 shrink-0 text-warning" aria-label="Momentum: 3+ stops this week" />}
+            <HeatFlame heat={heat} />
             {isShipped && (
               <span className="flex shrink-0 items-center gap-1 rounded-full border border-success/50 bg-success/15 px-1.5 text-[10px] font-bold text-success">
                 <RiShip2Fill className="size-3" /> shipped

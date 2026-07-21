@@ -4,6 +4,7 @@ import { useFeed } from "../feed-context";
 import PullToRefresh from "../components/PullToRefresh";
 import { timeAgo } from "@/lib/utils";
 import Avatar from "../components/Avatar";
+import HeatFlame from "../components/HeatFlame";
 
 // The tracks index: every ongoing story in the room, most recently active first.
 export default function TracksView() {
@@ -41,6 +42,7 @@ export default function TracksView() {
                   <div className="flex items-baseline gap-2">
                     <span className="font-semibold">{t.title}</span>
                     <span className="text-xs text-success">#{t.slug}</span>
+                    <HeatFlame heat={t.shipped_at ? null : t.heat} className="size-3.5 self-center" />
                     {t.owner && (
                       <span className="rounded-full border border-success/30 px-1.5 text-[10px] font-medium text-success" title="Personal track — only their posts join">
                         @{t.owner.handle}'s

@@ -545,6 +545,72 @@ export interface TrackSummary {
   recent_count: number;
   last_post_at: number | null;
   contributors: Author[];
+  heat: TrackHeat | null;
+}
+
+// Track heat: a real trending signal, not a raw post count. Three tiers,
+// checked in order — the strongest one wins:
+//  - blazing  · velocity + acceleration: a burst in the last 48h that beats
+//               the 48h before it. This is "on fire right now".
+//  - loved    · engagement: the room is reacting/replying/amplifying this
+//               week, regardless of posting pace.
+//  - steady   · endurance: weeks of sustained stops, still warm this week.
+export interface TrackHeat {
+  tier: "blazing" | "loved" | "steady";
+  label: string;
+}
+
+const H48 = 48 * 60 * 60 * 1000;
+const D7 = 7 * 24 * 60 * 60 * 1000;
+const D21 = 21 * 24 * 60 * 60 * 1000;
+
+function trackHeat(trackId: string): TrackHeat | null {
+  const now = Date.now();
+  const w = db
+    .prepare(
+      `SELECT
+         SUM(CASE WHEN p.created_at > ? THEN 1 ELSE 0 END) AS p48,
+         SUM(CASE WHEN p.created_at > ? AND p.created_at <= ? THEN 1 ELSE 0 END) AS prev48,
+         SUM(CASE WHEN p.created_at > ? THEN 1 ELSE 0 END) AS p7,
+         SUM(CASE WHEN p.created_at > ? THEN 1 ELSE 0 END) AS p21
+       FROM post_tracks pt JOIN posts p ON p.id = pt.post_id WHERE pt.track_id = ?`,
+    )
+    .get(now - H48, now - 2 * H48, now - H48, now - D7, now - D21, trackId) as {
+    p48: number | null;
+    prev48: number | null;
+    p7: number | null;
+    p21: number | null;
+  };
+  const p48 = w.p48 ?? 0;
+  const prev48 = w.prev48 ?? 0;
+  const p7 = w.p7 ?? 0;
+  const p21 = w.p21 ?? 0;
+
+  // Engagement this week on the track's posts, weighted by cost of the
+  // gesture: amplifies burn conviction, replies take effort, reactions are a tap.
+  const eng = db
+    .prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM reactions r JOIN post_tracks pt ON pt.post_id = r.target_id
+           WHERE pt.track_id = ? AND r.target_type = 'post' AND r.created_at > ?)
+       + 2 * (SELECT COUNT(*) FROM replies rp JOIN post_tracks pt ON pt.post_id = rp.post_id
+           WHERE pt.track_id = ? AND rp.created_at > ?)
+       + 3 * (SELECT COUNT(*) FROM amplifies a JOIN post_tracks pt ON pt.post_id = a.post_id
+           WHERE pt.track_id = ? AND a.created_at > ?) AS score`,
+    )
+    .get(trackId, now - D7, trackId, now - D7, trackId, now - D7) as { score: number | null };
+  const engagement = eng.score ?? 0;
+
+  if (p48 >= 3 && p48 > prev48) {
+    return { tier: "blazing", label: `Blazing — ${p48} stops in 48h and accelerating` };
+  }
+  if (engagement >= 12) {
+    return { tier: "loved", label: `Room favorite — the room is all over this week's stops` };
+  }
+  if (p21 >= 9 && p7 >= 2) {
+    return { tier: "steady", label: `Steady burn — ${p21} stops across three weeks, still going` };
+  }
+  return null;
 }
 
 function trackSummary(row: { id: string; slug: string; title: string; description: string | null; created_at: number; owner_id?: string | null; shipped_at?: number | null }): TrackSummary {
@@ -574,6 +640,7 @@ function trackSummary(row: { id: string; slug: string; title: string; descriptio
     recent_count: stats.recent ?? 0,
     last_post_at: stats.last,
     contributors,
+    heat: row.shipped_at ? null : trackHeat(row.id),
   };
 }
 
